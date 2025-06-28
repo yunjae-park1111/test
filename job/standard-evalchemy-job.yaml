@@ -1,0 +1,45 @@
+# Job for running VLLM evaluation
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: standard-evalchemy
+  labels:
+    app: vllm-eval
+spec:
+  # 완료 후 정리 (2분)
+  ttlSecondsAfterFinished: 120
+  
+  template:
+    metadata:
+      labels:
+        app: vllm-eval
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+        - name: ghcr-secret
+      containers:
+        - name: standard-evalchemy
+          image: ghcr.io/thakicloud/vllm-eval-public-standard-evalchemy:v1.1.0
+          imagePullPolicy: Always
+          
+          # 환경 변수로 간단하게 설정
+          env:
+            - name: VLLM_MODEL_ENDPOINT
+              value: "http://vllm:8000/v1/completions"
+            - name: BACKEND_API
+              value: "http://model-benchmark-backend-svc:8000"
+            - name: MAX_TOKENS
+              value: "140"
+            - name: HF_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: hf-token-secret
+                  key: token
+          
+          # 실행 명령
+          args:
+            - "--endpoint"
+            - "$(VLLM_MODEL_ENDPOINT)"
+            - "--config"
+            - "/app/configs/standard_evalchemy.json"
+          

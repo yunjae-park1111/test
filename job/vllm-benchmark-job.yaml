@@ -1,0 +1,39 @@
+# Job for running VLLM evaluation
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: vllm-benchmark
+  labels:
+    app: vllm-eval
+spec:
+  # 완료 후 정리 (2분)
+  ttlSecondsAfterFinished: 120
+  
+  template:
+    metadata:
+      labels:
+        app: vllm-eval
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+        - name: ghcr-secret
+      containers:
+        - name: vllm-benchmark
+          image: ghcr.io/thakicloud/vllm-eval-public-vllm-benchmark:v1.1.0
+          imagePullPolicy: Always
+          
+          # 환경 변수 (Dockerfile 참조)
+          env:
+            - name: VLLM_ENDPOINT
+              value: "http://vllm:8000" # K8s 서비스 이름 사용
+            - name: MODEL_NAME
+              value: "Qwen/Qwen3-8B"
+            - name: SERVED_MODEL_NAME
+              value: "qwen3-8b"
+            - name: RANDOM_INPUT_LEN
+              value: "512"
+            - name: MAX_CONCURRENCY
+              value: "1"
+            - name: BACKEND_API
+              value: "http://model-benchmark-backend-svc:8000"
+          
