@@ -50,6 +50,14 @@ jobs:
         REPOSITORY: ${{ github.repository }}
       run: python .github/scripts/ai_code_review.py
 
+    - name: Approve PR (Rules Passed)
+      if: steps.pr-rules.outputs.rules-passed == 'true'
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        PR_NUMBER: ${{ github.event.number }}
+        REPOSITORY: ${{ github.repository }}
+      run: python .github/scripts/approve_pr.py
+
     - name: Handle PR Rules Violation
       if: steps.pr-rules.outputs.rules-passed == 'false'
       env:
