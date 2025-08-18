@@ -1,0 +1,60 @@
+name: AI-Powered PR Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  pull_request_review_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  pr-review:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: |
+        npm init -y
+        npm install @octokit/rest openai js-yaml
+
+    - name: Run PR Rules Validation
+      id: pr-rules
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        PR_NUMBER: ${{ github.event.number }}
+        REPOSITORY: ${{ github.repository }}
+      run: node .github/scripts/validate-pr-rules.js
+
+    - name: Run AI Code Review
+      if: steps.pr-rules.outputs.rules-passed == 'true'
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        OPENAI_API_KEY: ${{ secrets.API_KEY }}
+        PR_NUMBER: ${{ github.event.number }}
+        REPOSITORY: ${{ github.repository }}
+      run: node .github/scripts/ai-code-review.js
+
+    - name: Handle PR Rules Violation
+      if: steps.pr-rules.outputs.rules-passed == 'false'
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        PR_NUMBER: ${{ github.event.number }}
+        REPOSITORY: ${{ github.repository }}
+        VIOLATION_MESSAGE: ${{ steps.pr-rules.outputs.violation-message }}
+      run: node .github/scripts/handle-violation.js
