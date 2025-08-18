@@ -4,14 +4,13 @@ import os
 import sys
 import yaml
 from github import Github
-from openai import OpenAI
+import openai
 
 class AICodeReviewer:
     def __init__(self):
         self.github = Github(os.environ['GITHUB_TOKEN'])
-        self.openai_client = OpenAI(
-            api_key=os.environ.get('OPENAI_API_KEY') or os.environ.get('API_KEY')
-        )
+        # OpenAI 클라이언트를 직접 사용하지 않고 모듈 방식으로 변경
+        openai.api_key = os.environ.get('OPENAI_API_KEY') or os.environ.get('API_KEY')
         self.pr_number = int(os.environ['PR_NUMBER'])
         self.repository_name = os.environ['REPOSITORY']
         self.repo = self.github.get_repo(self.repository_name)
@@ -84,7 +83,7 @@ class AICodeReviewer:
             language = self.detect_language(file.filename)
             prompt = self.build_review_prompt(file, language, config)
             
-            response = self.openai_client.chat.completions.create(
+            response = openai.ChatCompletion.create(
                 model=config['review_settings']['model'],
                 messages=[
                     {
@@ -100,7 +99,7 @@ class AICodeReviewer:
                 temperature=config['review_settings']['temperature']
             )
             
-            review_content = response.choices[0].message.content
+            review_content = response['choices'][0]['message']['content']
             
             return {
                 'filename': file.filename,
