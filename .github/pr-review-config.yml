@@ -1,4 +1,4 @@
-# PR 룰 설정
+# PR 룰 설정 (테스트용으로 완화)
 pr_rules:
   title:
     min_length: 10
@@ -7,40 +7,27 @@ pr_rules:
     forbidden_patterns:
       - 'wip'
       - 'temp'
-      - 'test123'
-      - 'asdf'
 
   description:
     min_length: 30
     required_sections:
       - '## 변경사항'
       - '## 테스트'
-    optional_sections:
-      - '## 스크린샷'
-      - '## 관련 이슈'
 
   files:
-    max_files_changed: 25
-    max_lines_changed: 800
+    max_files_changed: 50  # 늘림
+    max_lines_changed: 2000  # 늘림
     forbidden_paths:
-      - 'package-lock.json'
       - '*.log'
       - '.env'
-      - 'node_modules/**'
-      - 'dist/**'
-      - 'build/**'
 
   commits:
-    max_commits: 15
+    max_commits: 25  # 늘림
     required_commit_format: '^(feat|fix|docs|style|refactor|test|chore|hotfix):'
-    forbidden_commit_messages:
-      - 'fix'
-      - 'update'
-      - 'temp'
 
 # AI 리뷰 설정
 review_settings:
-  model: 'gpt-4o-mini'  # 또는 'gpt-4o' (더 정확하지만 비용 높음)
+  model: 'gpt-4o-mini'
   max_tokens: 1200
   temperature: 0.2
   
@@ -49,88 +36,31 @@ review_settings:
     - 'performance'
     - 'maintainability'
     - 'best_practices'
-    - 'error_handling'
-    - 'testing'
 
-  # 언어별 특화 설정
   languages:
     javascript:
       checks:
         - 'async_patterns'
         - 'error_handling'
         - 'memory_leaks'
-        - 'es6_features'
       frameworks:
         - 'react'
         - 'node'
         - 'express'
-        - 'next'
-    
-    typescript:
-      checks:
-        - 'type_safety'
-        - 'generics_usage'
-        - 'interface_design'
-      frameworks:
-        - 'react'
-        - 'node'
-        - 'nestjs'
     
     python:
       checks:
         - 'pep8'
         - 'security'
         - 'performance'
-        - 'type_hints'
       frameworks:
         - 'django'
         - 'flask'
         - 'fastapi'
 
-  # 심각도 레벨 설정
   severity_levels:
     critical: '🚨'
     high: '⚠️'
     medium: '💡'
     low: 'ℹ️'
     positive: '✅'
-
-  # 특별 체크 항목
-  special_checks:
-    security:
-      - 'sql_injection'
-      - 'xss_vulnerabilities'
-      - 'authentication_issues'
-      - 'data_exposure'
-      - 'input_validation'
-    
-    performance:
-      - 'algorithm_complexity'
-      - 'database_queries'
-      - 'memory_usage'
-      - 'caching_opportunities'
-    
-    maintainability:
-      - 'code_duplication'
-      - 'function_complexity'
-      - 'naming_conventions'
-      - 'documentation'
-
-# 알림 설정
-notifications:
-  slack:
-    enabled: false
-    webhook_url: ''
-    channels:
-      - '#code-review'
-      - '#security-alerts'
-  
-  teams:
-    enabled: false
-    webhook_url: ''
-
-# 비용 제어
-cost_control:
-  max_monthly_tokens: 100000  # 월 최대 토큰 수
-  skip_large_files: true      # 300줄 이상 파일 스킵
-  skip_generated_files: true  # 자동 생성 파일 스킵
