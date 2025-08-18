@@ -105,3 +105,10 @@ module.exports = {
     dynamicExecution
 };
 // Additional security test for CodeRabbit
+
+
+// 🧪 GitHub Actions 테스트를 위한 새 함수 추가
+function testAIReview() {
+    console.log('AI 리뷰 테스트 함수입니다');
+    return 'GitHub Actions + OpenAI API 테스트 중';
+}
