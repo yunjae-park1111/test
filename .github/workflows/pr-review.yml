@@ -5,6 +5,8 @@ on:
     types: [opened, synchronize, reopened]
   pull_request_review_comment:
     types: [created]
+  issue_comment:
+    types: [created]
 
 permissions:
   contents: read
@@ -14,6 +16,7 @@ permissions:
 jobs:
   pr-review:
     runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
     
     steps:
     - name: Checkout repository
@@ -39,16 +42,24 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         PR_NUMBER: ${{ github.event.number }}
         REPOSITORY: ${{ github.repository }}
-      run: python .github/scripts/validate_pr_rules.py
+        PR_ACTION: ${{ github.event.action }}
+      run: |
+        echo "PR 이벤트 처리: ${{ github.event.action }}"
+        python .github/scripts/validate_pr_rules.py
 
     - name: Run AI Code Review
       if: steps.pr-rules.outputs.rules-passed == 'true'
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        OPENAI_API_KEY: ${{ secrets.API_KEY }}
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         PR_NUMBER: ${{ github.event.number }}
         REPOSITORY: ${{ github.repository }}
-      run: python .github/scripts/ai_code_review.py
+        PR_ACTION: ${{ github.event.action }}
+      run: |
+        echo "멀티 AI 코드 리뷰 실행: ${{ github.event.action }}"
+        python .github/scripts/ai_code_review.py
 
     - name: Approve PR (Rules Passed)
       if: steps.pr-rules.outputs.rules-passed == 'true'
@@ -66,3 +77,35 @@ jobs:
         REPOSITORY: ${{ github.repository }}
         VIOLATION_MESSAGE: ${{ steps.pr-rules.outputs.violation-message }}
       run: python .github/scripts/handle_violation.py
+
+  comment-handler:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'issue_comment' || github.event_name == 'pull_request_review_comment'
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r .github/requirements.txt
+
+    - name: Handle Comment
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        REPOSITORY: ${{ github.repository }}
+        GITHUB_EVENT_ACTION: ${{ github.event.action }}
+      run: python .github/scripts/comment_handler.py

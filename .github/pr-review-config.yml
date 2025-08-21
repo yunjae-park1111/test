@@ -25,11 +25,28 @@ pr_rules:
     max_commits: 25  # 늘림
     required_commit_format: '^(feat|fix|docs|style|refactor|test|chore|hotfix):'
 
-# AI 리뷰 설정
+# 멀티 AI 리뷰 설정
+ai_models:
+  gpt:
+    model: 'gpt-5'
+    max_tokens: 1200
+    temperature: 0.2
+    enabled: true
+  
+  gemini:
+    model: 'gemini-2.5-pro'
+    max_tokens: 1200
+    temperature: 0.2
+    enabled: true
+  
+  claude:
+    model: 'claude-4-sonnet'
+    max_tokens: 1200
+    temperature: 0.2
+    enabled: true
+
+# 공통 리뷰 설정
 review_settings:
-  model: 'gpt-4o-mini'
-  max_tokens: 1200
-  temperature: 0.2
   
   focus_areas:
     - 'security'
