@@ -4,7 +4,7 @@ import os
 import sys
 import yaml
 from github import Github
-import openai
+from openai import OpenAI
 import google.generativeai as genai
 import anthropic
 
@@ -17,8 +17,7 @@ class AICodeReviewer:
         # GPT 초기화
         gpt_key = os.environ.get('OPENAI_API_KEY')
         if gpt_key:
-            openai.api_key = gpt_key
-            self.gpt_client = openai
+            self.gpt_client = OpenAI(api_key=gpt_key)
             self.gpt_model = 'gpt-5'
         else:
             self.gpt_client = None
@@ -177,7 +176,7 @@ class AICodeReviewer:
             if ai_name == 'gpt':
                 if not self.gpt_client:
                     return None
-                response = self.gpt_client.ChatCompletion.create(
+                response = self.gpt_client.chat.completions.create(
                     model=ai_config.get('model', self.gpt_model),
                     messages=[
                         {'role': 'system', 'content': system_message},
@@ -186,7 +185,7 @@ class AICodeReviewer:
                     max_tokens=ai_config.get('max_tokens', 1200),
                     temperature=ai_config.get('temperature', 0.2)
                 )
-                return response['choices'][0]['message']['content']
+                return response.choices[0].message.content
             
             elif ai_name == 'gemini':
                 if not self.gemini_client:

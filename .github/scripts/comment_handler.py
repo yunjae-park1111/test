@@ -5,7 +5,7 @@ import sys
 import yaml
 import re
 from github import Github
-import openai
+from openai import OpenAI
 import google.generativeai as genai
 import anthropic
 
@@ -47,8 +47,7 @@ class CommentHandler:
         # GPT 초기화
         gpt_key = os.environ.get('OPENAI_API_KEY')
         if gpt_key:
-            openai.api_key = gpt_key
-            self.gpt_client = openai
+            self.gpt_client = OpenAI(api_key=gpt_key)
             self.gpt_model = 'gpt-5'
         else:
             self.gpt_client = None
@@ -205,7 +204,7 @@ class CommentHandler:
             ai_config = config.get('ai_models', {}).get(ai_name, {})
             
             if ai_name == 'gpt' and self.gpt_client:
-                response = self.gpt_client.ChatCompletion.create(
+                response = self.gpt_client.chat.completions.create(
                     model=ai_config.get('model', self.gpt_model),
                     messages=[
                         {'role': 'system', 'content': '당신은 친근하고 전문적인 코드 리뷰어입니다. 사용자의 질문에 도움이 되는 답변을 제공하세요.'},
@@ -214,7 +213,7 @@ class CommentHandler:
                     max_tokens=ai_config.get('max_tokens', 800),
                     temperature=ai_config.get('temperature', 0.3)
                 )
-                return response['choices'][0]['message']['content']
+                return response.choices[0].message.content
             
             elif ai_name == 'claude' and self.claude_client:
                 response = self.claude_client.messages.create(
