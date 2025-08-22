@@ -129,15 +129,17 @@ class PRCodeReviewer:
     
     def post_failure_comment(self):
         """리뷰 실패시 코멘트 작성"""
-        template = self.load_template('review_failure.md')
-        
-        comment_body = template
+        print("🔄 리뷰 실패 코멘트 작성 시작")
         
         try:
-            self.pr.create_issue_comment(comment_body)
-            print(f"✅ 리뷰 실패 코멘트 작성 완료")
+            template = self.load_template('review_failure.md')
+            print(f"📝 템플릿 로드 완료: {len(template) if template else 0}자")
+            
+            self.pr.create_issue_comment(template)
+            print("✅ 리뷰 실패 코멘트 작성 완료")
         except Exception as e:
             print(f"❌ 리뷰 실패 코멘트 작성 실패: {e}")
+            print(f"❌ 에러 타입: {type(e).__name__}")
     
     def run(self):
         """메인 실행 함수 - 코드 리뷰만 수행"""
