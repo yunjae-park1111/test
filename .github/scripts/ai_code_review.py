@@ -5,7 +5,7 @@ import sys
 import yaml
 from github import Github
 from openai import OpenAI
-import httpx
+
 import google.generativeai as genai
 import anthropic
 
