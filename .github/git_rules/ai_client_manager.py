@@ -115,17 +115,6 @@ class AIClientManager:
             print(f"❌ {ai_name} 응답 생성 실패: {e}")
             return None
     
-    def get_available_ai(self):
-        """사용 가능한 AI 클라이언트 반환 (우선순위: GPT > Claude > Gemini)"""
-        if self.gpt_client:
-            return 'gpt', 'GPT-5'
-        elif self.claude_client:
-            return 'claude', 'Claude 4 Sonnet'
-        elif self.gemini_client:
-            return 'gemini', 'Gemini 2.5 Pro'
-        else:
-            return None, None
-    
     def get_all_available_ais(self):
         """모든 사용 가능한 AI 클라이언트 목록 반환"""
         available = []

@@ -30,12 +30,24 @@ class PRReviewerManager:
     def add_bot_reviewer(self):
         """PR 봇을 리뷰어로 추가"""
         try:
-            # GitHub Actions bot 추가 (실제로는 작동하지 않지만 의도적으로 추가)
-            # 실제 사용자나 팀을 리뷰어로 추가할 수 있음
-            print("🤖 PR 봇 리뷰어 설정 완료")
-            print(f"✅ PR #{self.pr_number}에 자동 리뷰 시스템 활성화")
+            # github-actions[bot]을 리뷰어로 추가
+            bot_username = "github-actions[bot]"
+            pr_author = self.pr.user.login
+            
+            print(f"📝 PR 작성자: {pr_author}")
+            print(f"🤖 {bot_username}을 리뷰어로 추가 중...")
+            
+            # tkai-pr-bot을 리뷰어로 추가
+            self.pr.create_review_request(reviewers=[bot_username])
+            
+            print(f"✅ {bot_username}이 리뷰어로 추가되었습니다")
+            print(f"✅ PR #{self.pr_number}에 AI 리뷰 봇 설정 완료")
+            
         except Exception as e:
             print(f"❌ 리뷰어 추가 실패: {e}")
+            print(f"❌ {bot_username} 계정이 존재하지 않거나 권한이 없을 수 있습니다")
+            import traceback
+            traceback.print_exc()
     
     def run(self):
         """메인 실행 함수"""

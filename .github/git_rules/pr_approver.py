@@ -89,7 +89,9 @@ class PRApprover:
                 else:
                     print("⏸️ 승인 보류 - 리뷰 결과에서 중요한 이슈 발견")
             else:
-                print("❌ 리뷰 결과가 없어 승인할 수 없습니다.")
+                # AI 리뷰 실패시에는 승인하지 않음
+                print("⏸️ AI 리뷰 실패로 인한 승인 보류")
+                print("💡 수동 리뷰 및 승인이 필요합니다")
         
         except Exception as e:
             print(f"❌ PR 승인 처리 중 오류: {e}")

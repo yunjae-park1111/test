@@ -46,17 +46,29 @@ class PRCodeReviewer:
         ext = os.path.splitext(filename)[1].lower()
         return extensions[ext]
     
-    def create_review_prompt(self, file):
-        """리뷰 프롬프트 생성"""
-        language = self.get_file_language(file.filename)
-        
+    def create_comprehensive_review_prompt(self, all_changes):
+        """전체 변경사항에 대한 통합 리뷰 프롬프트 생성"""
         # 템플릿 로드
         template = self.load_template('review_prompt.md')
         
+        # 모든 변경사항 통합
+        all_changes_text = ""
+        for change in all_changes:
+            all_changes_text += f"""
+=== {change['filename']} ({change['language']}) ===
+추가: +{change['additions']}줄, 삭제: -{change['deletions']}줄
+
+```diff
+{change['patch']}
+```
+
+"""
+        
         return template.format(
-            filename=file.filename,
-            language=language,
-            patch=file.patch
+            pr_title=self.pr.title,
+            pr_description=self.pr.body or '설명 없음',
+            file_count=len(all_changes),
+            all_changes=all_changes_text
         )
     
     def perform_review(self):
@@ -66,39 +78,81 @@ class PRCodeReviewer:
             print("변경된 파일이 없습니다.")
             return None
         
-        print(f"🔍 {len(files)}개 파일에 대한 AI 리뷰 시작")
+        print(f"🔍 {len(files)}개 파일에 대한 AI 종합 리뷰 시작")
         
-        all_reviews = []
-        
+        # 전체 변경사항 수집
+        all_changes = []
         for file in files:
             if file.patch:  # 변경사항이 있는 파일만
-                prompt = self.create_review_prompt(file)
-                
-                # 사용 가능한 AI로 리뷰
-                ai_name, ai_display_name = self.ai_manager.get_available_ai()
-                if ai_name:
-                    review = self.ai_manager.generate_with_ai(
-                        ai_name, 
-                        prompt, 
-                        "당신은 전문적인 코드 리뷰어입니다. 한국어로 건설적인 리뷰를 제공하세요."
-                    )
-                    
-                    if review:
-                        all_reviews.append({
-                            'filename': file.filename,
-                            'ai_name': ai_display_name,
-                            'review': review
-                        })
-                        print(f"  ✅ {file.filename} 리뷰 완료 ({ai_display_name})")
-                    else:
-                        print(f"  ❌ {file.filename} 리뷰 실패")
-                else:
-                    print("❌ 사용 가능한 AI가 없습니다.")
-                    break
+                language = self.get_file_language(file.filename)
+                all_changes.append({
+                    'filename': file.filename,
+                    'language': language,
+                    'patch': file.patch,
+                    'additions': file.additions,
+                    'deletions': file.deletions
+                })
         
-        return all_reviews if all_reviews else None
+        if not all_changes:
+            print("코드 변경사항이 없습니다.")
+            return None
+        
+        # 전체 변경사항에 대한 통합 리뷰 프롬프트 생성
+        prompt = self.create_comprehensive_review_prompt(all_changes)
+        
+        # 모든 사용 가능한 AI로 통합 리뷰
+        all_available_ais = self.ai_manager.get_all_available_ais()
+        if not all_available_ais:
+            print("❌ 사용 가능한 AI가 없습니다.")
+            return None
+        
+        all_reviews = []
+        system_message = "당신은 전문적인 코드 리뷰어입니다. PR 전체의 변경사항을 종합적으로 분석하여 한국어로 건설적인 리뷰를 제공하세요."
+        
+        for ai_name, ai_display_name in all_available_ais:
+            print(f"🔍 {ai_display_name}으로 리뷰 중...")
+            review = self.ai_manager.generate_with_ai(ai_name, prompt, system_message)
+            
+            if review:
+                all_reviews.append({
+                    'ai_name': ai_display_name,
+                    'review': review
+                })
+                print(f"  ✅ {ai_display_name} 리뷰 완료")
+            else:
+                print(f"  ❌ {ai_display_name} 리뷰 실패")
+        
+        if all_reviews:
+            # 모든 AI 리뷰를 하나로 통합
+            combined_data = self.combine_ai_reviews(all_reviews)
+            return [{
+                'filename': 'PR 전체 변경사항',
+                'ai_name': 'Multi-AI Review',
+                'review': combined_data['reviews'],
+                'ai_names': combined_data['ai_names'],
+                'ai_count': combined_data['ai_count']
+            }]
+        else:
+            print("❌ 모든 AI 리뷰 실패")
+            return None
     
-
+    def combine_ai_reviews(self, all_reviews):
+        """모든 AI 리뷰를 하나로 통합"""
+        # 각 AI 리뷰 조합
+        ai_reviews_text = ""
+        for review_data in all_reviews:
+            ai_name = review_data['ai_name']
+            review = review_data['review']
+            
+            ai_reviews_text += f"### 🔧 **{ai_name} 리뷰**\n\n"
+            ai_reviews_text += f"{review}\n\n"
+            ai_reviews_text += "---\n\n"
+        
+        return {
+            'reviews': ai_reviews_text,
+            'ai_names': ', '.join([r['ai_name'] for r in all_reviews]),
+            'ai_count': len(all_reviews)
+        }
     
     def post_review_comment(self, reviews):
         """리뷰 결과를 PR에 코멘트로 작성"""
@@ -109,16 +163,12 @@ class PRCodeReviewer:
         template = self.load_template('code_review_result.md')
         
         # 템플릿 사용
-        reviews_text = ""
-        for i, review_data in enumerate(reviews, 1):
-            reviews_text += f"""### 📁 **{review_data['filename']}**
-**🔧 리뷰어**: {review_data['ai_name']}
-
-{review_data['review']}
-
----
-"""
-        comment_body = template.replace('{reviews}', reviews_text)
+        review_data = reviews[0]  # Multi-AI 리뷰는 하나의 통합 결과
+        comment_body = template.format(
+            reviews=review_data['review'],
+            ai_names=review_data.get('ai_names', ''),
+            ai_count=review_data.get('ai_count', 0)
+        )
         
         try:
             self.pr.create_issue_comment(comment_body)
