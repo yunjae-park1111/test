@@ -21,7 +21,7 @@ class AICodeReviewer:
             self.gpt_client = OpenAI(
                 api_key=gpt_key
             )
-            self.gpt_model = 'gpt-4o'
+            self.gpt_model = 'gpt-5'
         else:
             self.gpt_client = None
             self.gpt_model = None
@@ -30,8 +30,8 @@ class AICodeReviewer:
         gemini_key = os.environ.get('GEMINI_API_KEY')
         if gemini_key:
             genai.configure(api_key=gemini_key)
-            self.gemini_client = genai.GenerativeModel('gemini-1.5-pro')
-            self.gemini_model = 'gemini-1.5-pro'
+            self.gemini_client = genai.GenerativeModel('gemini-2.5-pro')
+            self.gemini_model = 'gemini-2.5-pro'
         else:
             self.gemini_client = None
             self.gemini_model = None
@@ -61,13 +61,13 @@ class AICodeReviewer:
         return {
             'ai_models': {
                 'gpt': {
-                    'model': 'gpt-4o',
+                    'model': 'gpt-5',
                     'max_tokens': 1200,
                     'temperature': 0.2,
                     'enabled': True
                 },
                 'gemini': {
-                    'model': 'gemini-1.5-pro',
+                    'model': 'gemini-2.5-pro',
                     'max_tokens': 1200,
                     'temperature': 0.2,
                     'enabled': True
