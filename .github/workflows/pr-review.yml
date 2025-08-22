@@ -45,10 +45,10 @@ jobs:
         PR_ACTION: ${{ github.event.action }}
       run: |
         echo "PR 이벤트 처리: ${{ github.event.action }}"
-#        python .github/scripts/validate_pr_rules.py
+        python .github/scripts/validate_pr_rules.py
 
     - name: Run AI Code Review
-      if: steps.pr-rules.outputs.rules-passed == 'true'
+      if: steps.pr-rules.outputs.rules-passed == 'false'
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
