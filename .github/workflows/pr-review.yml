@@ -34,6 +34,13 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r .github/requirements.txt
 
+    - name: 👥 PR 리뷰어 설정
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        PR_NUMBER: ${{ github.event.number }}
+        REPOSITORY: ${{ github.repository }}
+      run: python .github/git_rules/pr_reviewer_manager.py
+
     - name: 🔍 PR 규칙 검증 (위반시 자동 코멘트)
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

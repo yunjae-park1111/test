@@ -162,6 +162,11 @@ class PRCodeReviewer:
             print(f"❌ AI 코드 리뷰 중 오류: {e}")
             import traceback
             traceback.print_exc()
+            # 예외 발생시에도 실패 코멘트 작성 시도
+            try:
+                self.post_failure_comment()
+            except Exception as comment_error:
+                print(f"❌ 실패 코멘트 작성도 실패: {comment_error}")
 
 if __name__ == "__main__":
     reviewer = PRCodeReviewer()
