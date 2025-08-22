@@ -20,22 +20,12 @@ class PRRulesChecker:
     
     def load_config(self):
         """설정 파일 로드"""
-        try:
-            config_files = ['.github/pr-review-config.yml', '.github/git_rules/templates/config.yml']
-            for config_file in config_files:
-                if os.path.exists(config_file):
-                    with open(config_file, 'r', encoding='utf-8') as f:
-                        return yaml.safe_load(f)
-        except:
-            pass
-        
-        # 기본 설정
-        return {
-            'pr_rules': {
-                'title': {'min_length': 10},
-                'description': {'min_length': 20}
-            }
-        }
+        config_files = ['.github/pr-review-config.yml', '.github/git_rules/templates/config.yml']
+        for config_file in config_files:
+            if os.path.exists(config_file):
+                with open(config_file, 'r', encoding='utf-8') as f:
+                    return yaml.safe_load(f)
+        raise FileNotFoundError("설정 파일을 찾을 수 없습니다")
     
     def validate_title(self):
         """제목 규칙 검증"""
@@ -88,18 +78,10 @@ class PRRulesChecker:
         """위반 메시지를 PR에 코멘트로 작성"""
         template = self.load_template('pr_rule_violation.md')
         
-        if template:
-            violations_list = ""
-            for violation in violations:
-                violations_list += f"- {violation}\n"
-            comment_body = template.replace('{violations}', violations_list)
-        else:
-            comment_body = f"""## ❌ PR 룰 위반이 감지되었습니다
-
-**위반 사항:**
-{chr(10).join(f"- {v}" for v in violations)}
-
-수정 후 다시 제출해주세요."""
+        violations_list = ""
+        for violation in violations:
+            violations_list += f"- {violation}\n"
+        comment_body = template.replace('{violations}', violations_list)
         
         try:
             self.pr.create_issue_comment(comment_body)

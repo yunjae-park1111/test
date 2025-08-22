@@ -22,23 +22,12 @@ class AIClientManager:
     
     def load_config(self):
         """설정 파일 로드"""
-        try:
-            config_files = ['.github/pr-review-config.yml', '.github/git_rules/templates/config.yml']
-            for config_file in config_files:
-                if os.path.exists(config_file):
-                    with open(config_file, 'r', encoding='utf-8') as f:
-                        return yaml.safe_load(f)
-        except:
-            pass
-        
-        # 기본 설정
-        return {
-            'ai_models': {
-                'gpt': {'model': 'gpt-5', 'enabled': True, 'max_tokens': 1000, 'temperature': 0.3},
-                'claude': {'model': 'claude-4-sonnet', 'enabled': True, 'max_tokens': 1000, 'temperature': 0.3},
-                'gemini': {'model': 'gemini-2.5-pro', 'enabled': True, 'max_tokens': 1000, 'temperature': 0.3}
-            }
-        }
+        config_files = ['.github/pr-review-config.yml', '.github/git_rules/templates/config.yml']
+        for config_file in config_files:
+            if os.path.exists(config_file):
+                with open(config_file, 'r', encoding='utf-8') as f:
+                    return yaml.safe_load(f)
+        raise FileNotFoundError("설정 파일을 찾을 수 없습니다")
     
     def init_clients(self):
         """모든 AI 클라이언트 초기화"""
@@ -120,22 +109,14 @@ class AIClientManager:
             elif ai_name == 'gemini' and self.gemini_client:
                 full_prompt = f"{system_message}\n\n{prompt}"
                 response = self.gemini_client.generate_content(full_prompt)
-                return response.text
+                if response.parts:
+                    return response.parts[0].text
+                else:
+                    return response.text
             
         except Exception as e:
             print(f"❌ {ai_name} 응답 생성 실패: {e}")
             return None
-    
-    def get_available_ai(self):
-        """사용 가능한 AI 클라이언트 반환 (우선순위: GPT > Claude > Gemini)"""
-        if self.gpt_client:
-            return 'gpt', 'GPT-5'
-        elif self.claude_client:
-            return 'claude', 'Claude 4 Sonnet'
-        elif self.gemini_client:
-            return 'gemini', 'Gemini 2.5 Pro'
-        else:
-            return None, None
     
     def get_all_available_ais(self):
         """모든 사용 가능한 AI 클라이언트 목록 반환"""

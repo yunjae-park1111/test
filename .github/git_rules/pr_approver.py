@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 """
-PR 승인 파일
-PR 규칙을 통과한 경우 승인 메시지 작성
+리뷰어 승인 파일
+AI 코드 리뷰 결과를 바탕으로 PR 승인 여부 결정
 """
 
 import os
+import sys
+import yaml
 from github import Github
+from ai_client_manager import AIClientManager
 
 class PRApprover:
     """PR 승인 처리 클래스"""
@@ -15,6 +18,17 @@ class PRApprover:
         self.repo = self.github.get_repo(os.environ['REPOSITORY'])
         self.pr_number = int(os.environ['PR_NUMBER'])
         self.pr = self.repo.get_pull(self.pr_number)
+        self.ai_manager = AIClientManager()
+        self.config = self.load_config()
+    
+    def load_config(self):
+        """설정 파일 로드"""
+        config_files = ['.github/pr-review-config.yml', '.github/git_rules/templates/config.yml']
+        for config_file in config_files:
+            if os.path.exists(config_file):
+                with open(config_file, 'r', encoding='utf-8') as f:
+                    return yaml.safe_load(f)
+        raise FileNotFoundError("설정 파일을 찾을 수 없습니다")
     
     def load_template(self, template_name):
         """템플릿 파일 로드"""
@@ -25,44 +39,64 @@ class PRApprover:
         except FileNotFoundError:
             return None
     
-    def post_approval_comment(self):
-        """승인 메시지를 PR에 코멘트로 작성"""
-        # 템플릿 로드
-        template = self.load_template('pr_approval.md')
+    def analyze_review_results(self, reviews):
+        """리뷰 결과 분석하여 승인 여부 결정"""
+        if not reviews:
+            return False
         
-        if template:
-            comment_body = template
-        else:
-            # 기본 승인 메시지
-            comment_body = """## ✅ **PR 규칙 검증 성공!**
-
-🎉 **축하합니다!** 귀하의 Pull Request가 모든 규칙을 통과했습니다.
-
-### ✅ **통과한 검증 항목**
-- ✅ **제목 형식**: 명확하고 적절한 제목
-- ✅ **설명 내용**: 충분히 상세한 설명
-
-### 🚀 **다음 단계**
-이제 코드 리뷰를 진행하겠습니다. AI가 자동으로 코드를 분석하여 리뷰 의견을 제공할 예정입니다.
-
-**감사합니다!** 좋은 코드와 문서화로 프로젝트에 기여해주셔서 고맙습니다! 🙏"""
+        # 설정 파일에서 키워드 로드
+        critical_keywords = self.load_critical_keywords()
         
-        try:
-            self.pr.create_issue_comment(comment_body)
-            print(f"✅ PR 승인 메시지 작성 완료")
-        except Exception as e:
-            print(f"❌ PR 승인 메시지 작성 실패: {e}")
+        for review_data in reviews:
+            review_text = review_data['review'].lower()
+            if any(keyword in review_text for keyword in critical_keywords):
+                print(f"🚨 {review_data['filename']}에서 중요한 이슈 발견, 승인 보류")
+                return False
+        
+        print("✅ 모든 리뷰에서 심각한 문제 없음, 승인 가능")
+        return True
     
-    def run(self):
+    def load_critical_keywords(self):
+        """승인 보류 키워드 로드"""
+        return self.config['critical_keywords']
+    
+    def approve_pr(self):
+        """실제 PR 승인"""
+        try:
+            # 템플릿에서 승인 메시지 로드
+            approval_template = self.load_template('pr_approval.md')
+            
+            # GitHub API로 PR approve
+            self.pr.create_review(
+                body=approval_template,
+                event="APPROVE"
+            )
+            print(f"✅ PR #{self.pr_number} 자동 승인 완료")
+        except Exception as e:
+            print(f"❌ PR 승인 실패: {e}")
+    
+    def run(self, reviews=None):
         """메인 실행 함수"""
-        print(f"🎉 PR 승인 처리 시작 - PR #{self.pr_number}")
+        print(f"🤖 PR 승인 검토 시작 - PR #{self.pr_number}")
         
         try:
-            self.post_approval_comment()
-            print("✅ PR 승인 처리 완료")
+            if reviews:
+                # 리뷰 결과가 전달된 경우
+                should_approve = self.analyze_review_results(reviews)
+                if should_approve:
+                    self.approve_pr()
+                    print("✅ PR 자동 승인 완료")
+                else:
+                    print("⏸️ 승인 보류 - 리뷰 결과에서 중요한 이슈 발견")
+            else:
+                # AI 리뷰 실패시에는 승인하지 않음
+                print("⏸️ AI 리뷰 실패로 인한 승인 보류")
+                print("💡 수동 리뷰 및 승인이 필요합니다")
         
         except Exception as e:
             print(f"❌ PR 승인 처리 중 오류: {e}")
+            import traceback
+            traceback.print_exc()
 
 if __name__ == "__main__":
     approver = PRApprover()
