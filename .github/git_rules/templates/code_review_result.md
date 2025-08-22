@@ -14,4 +14,5 @@
 - **🔧 모델**: 멀티 AI 시스템 (GPT-5, Gemini 2.5 Pro, Claude 4 Sonnet)
 - **🎯 분석 범위**: 보안, 성능, 품질, 베스트 프랙티스
 
+> 💡 추가 질문이나 더 자세한 설명이 필요하시면 @tkai-pr-bot을 호출해주세요!
 **Happy Coding! 🚀**

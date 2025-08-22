@@ -5,7 +5,7 @@ ai_models:
     max_tokens: 10000
     temperature: 0.3
   claude:
-    model: claude-4-sonnet
+    model: claude-sonnet-4-20250514
     enabled: true
     max_tokens: 10000
     temperature: 0.3
