@@ -5,7 +5,6 @@ import sys
 import yaml
 from github import Github
 from openai import OpenAI
-import httpx
 import google.generativeai as genai
 import anthropic
 
@@ -13,30 +12,16 @@ class AICodeReviewer:
     def __init__(self):
         self.github = Github(os.environ['GITHUB_TOKEN'])
         
-        # AI 클라이언트들 초기화
-        
-        # 프록시 설정 (환경변수 기반)
-        proxy_url = (
-            os.getenv("HTTPS_PROXY")
-            or os.getenv("https_proxy")
-            or os.getenv("HTTP_PROXY")
-            or os.getenv("http_proxy")
-        )
-        
         # GPT 초기화 (OpenAI v1 방식)
         gpt_key = os.environ.get('OPENAI_API_KEY')
         if gpt_key:
-            if proxy_url:
-                http_client = httpx.Client(proxies=proxy_url, timeout=60)
-                self.gpt_client = OpenAI(api_key=gpt_key, http_client=http_client)
-            else:
-                self.gpt_client = OpenAI(api_key=gpt_key)
+            self.gpt_client = OpenAI(api_key=gpt_key)
             self.gpt_model = 'gpt-5'
         else:
             self.gpt_client = None
             self.gpt_model = None
         
-        # Gemini 초기화 (환경변수 기반 프록시 인식)
+        # Gemini 초기화
         gemini_key = os.environ.get('GEMINI_API_KEY')
         if gemini_key:
             genai.configure(api_key=gemini_key)
@@ -46,7 +31,7 @@ class AICodeReviewer:
             self.gemini_client = None
             self.gemini_model = None
         
-        # Claude 초기화 (proxies 인자 없이 키만)
+        # Claude 초기화
         claude_key = os.environ.get('ANTHROPIC_API_KEY')
         if claude_key:
             self.claude_client = anthropic.Client(api_key=claude_key)
