@@ -15,6 +15,8 @@ class AICodeReviewer:
         # GPT 초기화 (OpenAI v1 방식)
         gpt_key = os.environ.get('OPENAI_API_KEY')
         if gpt_key:
+            print(f"GPT 키: {gpt_key}")
+            print(f"GPT 모델: {OpenAI(api_key=gpt_key)}")
             self.gpt_client = OpenAI(api_key=gpt_key)
             self.gpt_model = 'gpt-5'
         else:
