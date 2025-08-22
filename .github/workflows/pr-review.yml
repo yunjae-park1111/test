@@ -2,9 +2,7 @@ name: AI-Powered PR Review
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
-  pull_request_review_comment:
-    types: [created]
+    types: [opened, synchronize, reopened, edited]
   issue_comment:
     types: [created]
 
@@ -36,19 +34,24 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r .github/requirements.txt
 
-    - name: Run PR Rules Validation
+    - name: 🔍 PR 규칙 검증 (위반시 자동 코멘트)
       id: pr-rules
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         PR_NUMBER: ${{ github.event.number }}
         REPOSITORY: ${{ github.repository }}
         PR_ACTION: ${{ github.event.action }}
-      run: |
-        echo "PR 이벤트 처리: ${{ github.event.action }}"
-        python .github/git_rules/validate_pr_rules.py
+      run: python .github/git_rules/pr_rules_checker.py
 
-    - name: Run AI Code Review
+    - name: ✅ PR 승인 (규칙 통과시)
       if: steps.pr-rules.outputs.rules-passed == 'true'
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        PR_NUMBER: ${{ github.event.number }}
+        REPOSITORY: ${{ github.repository }}
+      run: python .github/git_rules/pr_approver.py
+
+    - name: 🤖 AI 코드 리뷰 실행
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -57,30 +60,11 @@ jobs:
         PR_NUMBER: ${{ github.event.number }}
         REPOSITORY: ${{ github.repository }}
         PR_ACTION: ${{ github.event.action }}
-      run: |
-        echo "멀티 AI 코드 리뷰 실행: ${{ github.event.action }}"
-        python .github/git_rules/ai_code_review.py
+      run: python .github/git_rules/pr_code_reviewer.py
 
-    - name: Approve PR (Rules Passed)
-      if: steps.pr-rules.outputs.rules-passed == 'true'
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        PR_NUMBER: ${{ github.event.number }}
-        REPOSITORY: ${{ github.repository }}
-      run: python .github/git_rules/approve_pr.py
-
-    - name: Handle PR Rules Violation
-      if: steps.pr-rules.outputs.rules-passed == 'false'
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        PR_NUMBER: ${{ github.event.number }}
-        REPOSITORY: ${{ github.repository }}
-        VIOLATION_MESSAGE: ${{ steps.pr-rules.outputs.violation-message }}
-      run: python .github/git_rules/handle_violation.py
-
-  comment-handler:
+  comment-response:
     runs-on: ubuntu-latest
-    if: github.event_name == 'issue_comment' || github.event_name == 'pull_request_review_comment'
+    if: github.event_name == 'issue_comment' && github.event.action == 'created' && github.event.issue.pull_request
     
     steps:
     - name: Checkout repository
@@ -100,12 +84,13 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r .github/requirements.txt
 
-    - name: Handle Comment
+    - name: 💬 AI 코멘트 응답
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        PR_NUMBER: ${{ github.event.issue.number }}
         REPOSITORY: ${{ github.repository }}
-        GITHUB_EVENT_ACTION: ${{ github.event.action }}
-      run: python .github/git_rules/comment_handler.py
+        COMMENT_ID: ${{ github.event.comment.id }}
+      run: python .github/git_rules/comment_responder.py
