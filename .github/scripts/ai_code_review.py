@@ -5,6 +5,7 @@ import sys
 import yaml
 from github import Github
 from openai import OpenAI
+import httpx
 import google.generativeai as genai
 import anthropic
 
@@ -17,9 +18,11 @@ class AICodeReviewer:
         # GPT 초기화
         gpt_key = os.environ.get('OPENAI_API_KEY')
         if gpt_key:
+            # 프록시 문제 해결을 위해 HTTP 클라이언트 명시적 설정
+            http_client = httpx.Client()
             self.gpt_client = OpenAI(
                 api_key=gpt_key,
-                timeout=30.0
+                http_client=http_client
             )
             self.gpt_model = 'gpt-5'
         else:
