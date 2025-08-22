@@ -36,17 +36,6 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r .github/requirements.txt
 
-    - name: Run PR Rules Validation
-      id: pr-rules
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        PR_NUMBER: ${{ github.event.number }}
-        REPOSITORY: ${{ github.repository }}
-        PR_ACTION: ${{ github.event.action }}
-      run: |
-        echo "PR 이벤트 처리: ${{ github.event.action }}"
-        python .github/scripts/validate_pr_rules.py
-
     - name: Run AI Code Review
       if: steps.pr-rules.outputs.rules-passed == 'true'
       env:
