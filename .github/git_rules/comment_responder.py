@@ -37,42 +37,16 @@ class CommentResponder:
     
     def should_respond(self, comment_body, mentions):
         """AI가 응답해야 하는 코멘트인지 판단"""
-        comment_lower = comment_body.lower()
-        
-        # 트리거 키워드 확인
-        trigger_keywords = [
-            '리뷰', 'review', '설명', 'explain', '분석', 'analyze',
-            '체크', 'check', '확인', 'verify', '검토', '피드백', 'feedback'
-        ]
-        
-        if any(keyword in comment_lower for keyword in trigger_keywords):
-            return True
-        
-        # 봇이 멘션된 경우
-        bot_mentions = ['github-actions', 'bot', 'ai', 'review', 'reviewer']
-        if any(mention.lower() in bot_mentions for mention in mentions):
-            return True
-        
-        return False
+        return 'tkai-pr-bot' in [m.lower() for m in mentions]
     
     def format_response(self, ai_response, ai_display_name):
         """AI 응답을 템플릿으로 포맷팅"""
         template = self.load_template('comment_response.md')
         
-        if template:
-            return template.format(
-                ai_response=ai_response,
-                ai_display_name=ai_display_name
-            )
-        else:
-            # 기본 포맷
-            return f"""🤖 **AI 코드 어시스턴트 응답**
-
-{ai_response}
-
----
-> 💡 추가 질문이나 더 자세한 설명이 필요하시면 언제든 말씀해주세요!
-> 🔧 **AI 모델**: {ai_display_name}"""
+        return template.format(
+            ai_response=ai_response,
+            ai_display_name=ai_display_name
+        )
     
     def respond_to_comment(self):
         """코멘트에 AI 응답 생성"""
@@ -93,17 +67,51 @@ class CommentResponder:
                 print("응답이 필요하지 않은 코멘트입니다.")
                 return
             
-            # AI 응답 생성
-            simple_prompt = f"""사용자 질문: "{comment_body}"
-PR 제목: {self.pr.title}
-친근하게 한국어로 답변해주세요."""
+            # AI 응답 생성 - 풍부한 컨텍스트 포함
+            # PR 기본 정보
+            pr_info = f"""PR 제목: {self.pr.title}
+PR 설명: {self.pr.body or '설명 없음'}"""
+            
+            # 변경된 파일 정보
+            files_info = "변경된 파일들:\n"
+            try:
+                files = list(self.pr.get_files())
+                for file in files:
+                    files_info += f"\n파일: {file.filename} (+{file.additions}/-{file.deletions})\n"
+                    if file.patch:
+                        files_info += f"```diff\n{file.patch}\n```\n"
+                    else:
+                        files_info += "변경사항 없음\n"
+            except:
+                files_info += "파일 정보 로드 실패\n"
+            
+            # 모든 코멘트들 (AI 리뷰 결과 포함)
+            comments_info = "모든 코멘트들:\n"
+            try:
+                comments = list(self.pr.get_issue_comments())
+                for comment in comments:
+                    author = comment.user.login
+                    body = comment.body
+                    comments_info += f"- {author}: {body}\n"
+            except:
+                comments_info += "코멘트 로드 실패\n"
+            
+            detailed_prompt = f"""사용자 질문: "{comment_body}"
+
+PR 정보: {pr_info}
+
+변경된 파일 정보: {files_info}
+
+모든 코멘트 정보: {comments_info}
+
+위 PR 정보와 코멘트 히스토리를 바탕으로 사용자 질문에 구체적이고 도움이 되는 답변을 한국어로 해주세요."""
             
             ai_name, ai_display_name = self.ai_manager.get_available_ai()
             if ai_name:
                 ai_response = self.ai_manager.generate_with_ai(
                     ai_name,
-                    simple_prompt,
-                    "당신은 친근하고 전문적인 코드 리뷰어입니다. 사용자의 질문에 도움이 되는 답변을 제공하세요."
+                    detailed_prompt,
+                    "당신은 친근하고 전문적인 코드 리뷰어입니다. PR 컨텍스트를 바탕으로 정확하고 도움이 되는 답변을 제공하세요."
                 )
                 
                 if ai_response:

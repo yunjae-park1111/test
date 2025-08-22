@@ -6,8 +6,10 @@ PR 코드 리뷰 실행 파일
 
 import os
 import sys
+import yaml
 from github import Github
 from ai_client_manager import AIClientManager
+from pr_approver import PRApprover
 
 class PRCodeReviewer:
     """PR 코드 리뷰 실행 클래스"""
@@ -18,6 +20,16 @@ class PRCodeReviewer:
         self.pr_number = int(os.environ['PR_NUMBER'])
         self.pr = self.repo.get_pull(self.pr_number)
         self.ai_manager = AIClientManager()
+        self.config = self.load_config()
+    
+    def load_config(self):
+        """설정 파일 로드"""
+        config_files = ['.github/pr-review-config.yml', '.github/git_rules/templates/config.yml']
+        for config_file in config_files:
+            if os.path.exists(config_file):
+                with open(config_file, 'r', encoding='utf-8') as f:
+                    return yaml.safe_load(f)
+        raise FileNotFoundError("설정 파일을 찾을 수 없습니다")
     
     def load_template(self, template_name):
         """템플릿 파일 로드"""
@@ -30,41 +42,22 @@ class PRCodeReviewer:
     
     def get_file_language(self, filename):
         """파일 확장자로 언어 감지"""
-        extensions = {
-            '.py': 'python', '.js': 'javascript', '.ts': 'typescript', '.tsx': 'typescript',
-            '.java': 'java', '.go': 'go', '.rs': 'rust', '.cpp': 'cpp', '.c': 'c',
-            '.php': 'php', '.rb': 'ruby', '.swift': 'swift', '.kt': 'kotlin',
-            '.cs': 'csharp', '.html': 'html', '.css': 'css', '.sql': 'sql',
-            '.sh': 'shell', '.yml': 'yaml', '.yaml': 'yaml', '.json': 'json'
-        }
+        extensions = self.config['file_extensions']
         ext = os.path.splitext(filename)[1].lower()
-        return extensions.get(ext, 'text')
+        return extensions[ext]
     
     def create_review_prompt(self, file):
         """리뷰 프롬프트 생성"""
         language = self.get_file_language(file.filename)
         
-        return f"""파일: {file.filename}, 언어: {language}
-
-코드 변경사항을 리뷰해주세요:
-```diff
-{file.patch}
-```
-
-다음 기준으로 리뷰해주세요:
-1. **보안 취약점** - SQL 인젝션, XSS 등
-2. **성능 최적화** - 메모리 누수, 비효율적 알고리즘  
-3. **코드 품질** - 가독성, 유지보수성
-4. **버그 가능성** - 로직 오류, 예외 처리
-5. **베스트 프랙티스** - 코딩 컨벤션
-
-**형식:**
-- 전체 평가 (1-2줄)
-- 주요 발견사항 
-- 개선 제안
-- 칭찬할 점
-
-간결하고 건설적으로 작성해주세요."""
+        # 템플릿 로드
+        template = self.load_template('review_prompt.md')
+        
+        return template.format(
+            filename=file.filename,
+            language=language,
+            patch=file.patch
+        )
     
     def perform_review(self):
         """AI 코드 리뷰 수행"""
@@ -101,67 +94,69 @@ class PRCodeReviewer:
                         print(f"  ❌ {file.filename} 리뷰 실패")
                 else:
                     print("❌ 사용 가능한 AI가 없습니다.")
-                    return None
+                    break
         
-        return all_reviews
+        return all_reviews if all_reviews else None
+    
+
     
     def post_review_comment(self, reviews):
-        """리뷰 결과를 PR에 코멘트로 작성 (reviewer 설정은 건드리지 않음)"""
+        """리뷰 결과를 PR에 코멘트로 작성"""
         if not reviews:
             return
         
         # 템플릿 로드
         template = self.load_template('code_review_result.md')
         
-        if template:
-            # 템플릿 사용
-            reviews_text = ""
-            for i, review_data in enumerate(reviews, 1):
-                reviews_text += f"""### 📁 **{review_data['filename']}**
+        # 템플릿 사용
+        reviews_text = ""
+        for i, review_data in enumerate(reviews, 1):
+            reviews_text += f"""### 📁 **{review_data['filename']}**
 **🔧 리뷰어**: {review_data['ai_name']}
 
 {review_data['review']}
 
 ---
 """
-            comment_body = template.replace('{reviews}', reviews_text)
-        else:
-            # 기본 포맷
-            comment_body = "## 🤖 **AI 코드 리뷰 결과**\n\n"
-            
-            for review_data in reviews:
-                comment_body += f"""### 📁 **{review_data['filename']}**
-**🔧 리뷰어**: {review_data['ai_name']}
-
-{review_data['review']}
-
----
-"""
-            
-            comment_body += """
-### 🤖 **AI 리뷰 정보**
-- **🔧 모델**: 멀티 AI 시스템 (GPT-5, Gemini 2.5 Pro, Claude 4 Sonnet)
-- **🎯 분석 범위**: 보안, 성능, 품질, 베스트 프랙티스
-
-**Happy Coding! 🚀**"""
+        comment_body = template.replace('{reviews}', reviews_text)
         
         try:
             self.pr.create_issue_comment(comment_body)
             print(f"✅ 리뷰 코멘트 작성 완료")
+                
         except Exception as e:
             print(f"❌ 리뷰 코멘트 작성 실패: {e}")
     
+    def post_failure_comment(self):
+        """리뷰 실패시 코멘트 작성"""
+        template = self.load_template('review_failure.md')
+        
+        comment_body = template
+        
+        try:
+            self.pr.create_issue_comment(comment_body)
+            print(f"✅ 리뷰 실패 코멘트 작성 완료")
+        except Exception as e:
+            print(f"❌ 리뷰 실패 코멘트 작성 실패: {e}")
+    
     def run(self):
-        """메인 실행 함수 - 룰 위반시에도 코멘트만 남김"""
+        """메인 실행 함수 - 코드 리뷰만 수행"""
         print(f"🚀 AI 코드 리뷰 시작 - PR #{self.pr_number}")
         
         try:
             reviews = self.perform_review()
             if reviews:
+                # 리뷰 결과 코멘트 작성
                 self.post_review_comment(reviews)
+                
+                # PR 승인 처리는 별도 모듈에서 담당
+                approver = PRApprover()
+                approver.run(reviews)
+                
                 print("✅ AI 코드 리뷰 완료")
             else:
                 print("❌ AI 코드 리뷰 실패")
+                self.post_failure_comment()
         
         except Exception as e:
             print(f"❌ AI 코드 리뷰 중 오류: {e}")

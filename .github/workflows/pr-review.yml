@@ -35,21 +35,12 @@ jobs:
         pip install -r .github/requirements.txt
 
     - name: 🔍 PR 규칙 검증 (위반시 자동 코멘트)
-      id: pr-rules
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         PR_NUMBER: ${{ github.event.number }}
         REPOSITORY: ${{ github.repository }}
         PR_ACTION: ${{ github.event.action }}
       run: python .github/git_rules/pr_rules_checker.py
-
-    - name: ✅ PR 승인 (규칙 통과시)
-      if: steps.pr-rules.outputs.rules-passed == 'true'
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        PR_NUMBER: ${{ github.event.number }}
-        REPOSITORY: ${{ github.repository }}
-      run: python .github/git_rules/pr_approver.py
 
     - name: 🤖 AI 코드 리뷰 실행
       env:

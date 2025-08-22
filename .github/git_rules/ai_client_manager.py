@@ -22,23 +22,12 @@ class AIClientManager:
     
     def load_config(self):
         """설정 파일 로드"""
-        try:
-            config_files = ['.github/pr-review-config.yml', '.github/git_rules/templates/config.yml']
-            for config_file in config_files:
-                if os.path.exists(config_file):
-                    with open(config_file, 'r', encoding='utf-8') as f:
-                        return yaml.safe_load(f)
-        except:
-            pass
-        
-        # 기본 설정
-        return {
-            'ai_models': {
-                'gpt': {'model': 'gpt-5', 'enabled': True, 'max_tokens': 1000, 'temperature': 0.3},
-                'claude': {'model': 'claude-4-sonnet', 'enabled': True, 'max_tokens': 1000, 'temperature': 0.3},
-                'gemini': {'model': 'gemini-2.5-pro', 'enabled': True, 'max_tokens': 1000, 'temperature': 0.3}
-            }
-        }
+        config_files = ['.github/pr-review-config.yml', '.github/git_rules/templates/config.yml']
+        for config_file in config_files:
+            if os.path.exists(config_file):
+                with open(config_file, 'r', encoding='utf-8') as f:
+                    return yaml.safe_load(f)
+        raise FileNotFoundError("설정 파일을 찾을 수 없습니다")
     
     def init_clients(self):
         """모든 AI 클라이언트 초기화"""

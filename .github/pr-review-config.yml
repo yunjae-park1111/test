@@ -1,74 +1,64 @@
-# PR 룰 설정 (테스트용으로 완화)
+ai_models:
+  gpt:
+    model: gpt-5
+    enabled: true
+    max_tokens: 1000
+    temperature: 0.3
+  claude:
+    model: claude-4-sonnet
+    enabled: true
+    max_tokens: 1000
+    temperature: 0.3
+  gemini:
+    model: gemini-2.5-pro
+    enabled: true
+    max_tokens: 1000
+    temperature: 0.3
+
 pr_rules:
   title:
     min_length: 10
-    required_patterns:
-      - '^(feat|fix|docs|style|refactor|test|chore|hotfix):'
-    forbidden_patterns:
-      - 'wip'
-      - 'temp'
-
   description:
-    min_length: 30
-    required_sections:
-      - '## 변경사항'
-      - '## 테스트'
+    min_length: 20
 
+critical_keywords:
+  - 보안
+  - security
+  - 취약점
+  - vulnerability
+  - sql injection
+  - xss
+  - 메모리 누수
+  - memory leak
+  - 무한루프
+  - infinite loop
+  - 심각
+  - critical
+  - 위험
+  - dangerous
+  - 버그
+  - bug
 
-
-# 멀티 AI 리뷰 설정
-ai_models:
-  gpt:
-    model: 'gpt-5'
-    max_tokens: 1200
-    temperature: 0.2
-    enabled: true
-  
-  gemini:
-    model: 'gemini-2.5-pro'
-    max_tokens: 1200
-    temperature: 0.2
-    enabled: true
-  
-  claude:
-    model: 'claude-4-sonnet'
-    max_tokens: 1200
-    temperature: 0.2
-    enabled: true
-
-# 공통 리뷰 설정
-review_settings:
-  
-  focus_areas:
-    - 'security'
-    - 'performance'
-    - 'maintainability'
-    - 'best_practices'
-
-  languages:
-    javascript:
-      checks:
-        - 'async_patterns'
-        - 'error_handling'
-        - 'memory_leaks'
-      frameworks:
-        - 'react'
-        - 'node'
-        - 'express'
-    
-    python:
-      checks:
-        - 'pep8'
-        - 'security'
-        - 'performance'
-      frameworks:
-        - 'django'
-        - 'flask'
-        - 'fastapi'
-
-  severity_levels:
-    critical: '🚨'
-    high: '⚠️'
-    medium: '💡'
-    low: 'ℹ️'
-    positive: '✅'
+file_extensions:
+  .py: python
+  .js: javascript
+  .ts: typescript
+  .tsx: typescript
+  .java: java
+  .go: go
+  .rs: rust
+  .cpp: cpp
+  .c: c
+  .php: php
+  .rb: ruby
+  .swift: swift
+  .kt: kotlin
+  .cs: csharp
+  .html: html
+  .css: css
+  .sql: sql
+  .sh: shell
+  .yml: yaml
+  .yaml: yaml
+  .json: json
+  .md: markdown
