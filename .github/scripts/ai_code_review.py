@@ -17,7 +17,10 @@ class AICodeReviewer:
         # GPT 초기화
         gpt_key = os.environ.get('OPENAI_API_KEY')
         if gpt_key:
-            self.gpt_client = OpenAI(api_key=gpt_key)
+            self.gpt_client = OpenAI(
+                api_key=gpt_key,
+                timeout=30.0
+            )
             self.gpt_model = 'gpt-5'
         else:
             self.gpt_client = None
