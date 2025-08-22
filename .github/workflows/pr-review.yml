@@ -48,7 +48,7 @@ jobs:
         python .github/scripts/validate_pr_rules.py
 
     - name: Run AI Code Review
-      if: steps.pr-rules.outputs.rules-passed == 'false'
+      if: steps.pr-rules.outputs.rules-passed == 'true'
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
