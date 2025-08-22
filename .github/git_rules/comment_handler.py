@@ -40,55 +40,92 @@ class CommentHandler:
                 print("이벤트 정보를 찾을 수 없습니다.")
                 sys.exit(1)
         
-        # AI 클라이언트들 초기화
+        # 설정 파일 로드 및 AI 클라이언트들 초기화
+        self.config = self.load_config()
         self.init_ai_clients()
     
     def init_ai_clients(self):
-        """AI 클라이언트들 초기화"""
-        # GPT 초기화 (OpenAI v1 방식 - httpx 문제 회피)
+        """AI 클라이언트들 초기화 (config 기반)"""
+        ai_models_config = self.config.get('ai_models', {})
+        
+        # GPT 초기화 (config 기반)
+        self.init_gpt_client(ai_models_config.get('gpt', {}))
+        
+        # Gemini 초기화 (config 기반)
+        self.init_gemini_client(ai_models_config.get('gemini', {}))
+        
+        # Claude 초기화 (config 기반)
+        self.init_claude_client(ai_models_config.get('claude', {}))
+    
+    def init_gpt_client(self, gpt_config):
+        """GPT 클라이언트 초기화 (config 기반)"""
+        if not gpt_config.get('enabled', True):
+            self.gpt_client = None
+            self.gpt_model = None
+            return
+            
         gpt_key = os.environ.get('OPENAI_API_KEY')
         if gpt_key:
             try:
                 import httpx
-                # httpx 클라이언트를 직접 만들어서 전달
                 http_client = httpx.Client()
                 self.gpt_client = OpenAI(
                     api_key=gpt_key,
                     http_client=http_client
                 )
-                self.gpt_model = 'gpt-5'
+                self.gpt_model = gpt_config.get('model', 'gpt-5')
+                print(f"✅ GPT 클라이언트 초기화 완료: {self.gpt_model}")
             except Exception as e:
-                print(f"GPT 클라이언트 초기화 실패: {e}")
+                print(f"❌ GPT 클라이언트 초기화 실패: {e}")
                 self.gpt_client = None
                 self.gpt_model = None
         else:
             self.gpt_client = None
             self.gpt_model = None
-        
-        # Gemini 초기화
+    
+    def init_gemini_client(self, gemini_config):
+        """Gemini 클라이언트 초기화 (config 기반)"""
+        if not gemini_config.get('enabled', True):
+            self.gemini_client = None
+            self.gemini_model = None
+            return
+            
         gemini_key = os.environ.get('GEMINI_API_KEY')
         if gemini_key:
-            genai.configure(api_key=gemini_key)
-            self.gemini_client = genai.GenerativeModel('gemini-2.5-pro')
-            self.gemini_model = 'gemini-2.5-pro'
+            try:
+                genai.configure(api_key=gemini_key)
+                model_name = gemini_config.get('model', 'gemini-2.5-pro')
+                self.gemini_client = genai.GenerativeModel(model_name)
+                self.gemini_model = model_name
+                print(f"✅ Gemini 클라이언트 초기화 완료: {self.gemini_model}")
+            except Exception as e:
+                print(f"❌ Gemini 클라이언트 초기화 실패: {e}")
+                self.gemini_client = None
+                self.gemini_model = None
         else:
             self.gemini_client = None
             self.gemini_model = None
-        
-        # Claude 초기화 (httpx 문제 회피)
+    
+    def init_claude_client(self, claude_config):
+        """Claude 클라이언트 초기화 (config 기반)"""
+        if not claude_config.get('enabled', True):
+            self.claude_client = None
+            self.claude_model = None
+            return
+            
         claude_key = os.environ.get('ANTHROPIC_API_KEY')
         if claude_key:
             try:
                 import httpx
-                # httpx 클라이언트를 직접 만들어서 전달
                 http_client = httpx.Client()
                 self.claude_client = anthropic.Anthropic(
                     api_key=claude_key,
                     http_client=http_client
                 )
-                self.claude_model = 'claude-4-sonnet'
+                self.claude_model = claude_config.get('model', 'claude-4-sonnet')
+                print(f"✅ Claude 클라이언트 초기화 완료: {self.claude_model}")
             except Exception as e:
-                print(f"Claude 클라이언트 초기화 실패: {e}")
+                print(f"❌ Claude 클라이언트 초기화 실패: {e}")
                 self.claude_client = None
                 self.claude_model = None
         else:

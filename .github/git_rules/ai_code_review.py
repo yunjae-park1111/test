@@ -12,60 +12,98 @@ class AICodeReviewer:
     def __init__(self):
         self.github = Github(os.environ['GITHUB_TOKEN'])
         
-        # GPT 초기화 (OpenAI v1 방식 - httpx 문제 회피)
-        gpt_key = os.environ.get('OPENAI_API_KEY') or os.environ.get('API_KEY')
-        if gpt_key:
-            try:
-                import httpx
-                # httpx 클라이언트를 직접 만들어서 전달
-                http_client = httpx.Client()
-                self.gpt_client = OpenAI(
-                    api_key=gpt_key,
-                    http_client=http_client
-                )
-                self.gpt_model = 'gpt-5'
-            except Exception as e:
-                print(f"GPT 클라이언트 초기화 실패: {e}")
-                self.gpt_client = None
-                self.gpt_model = None
-        else:
-            self.gpt_client = None
-            self.gpt_model = None
+        # 설정 파일 로드
+        self.config = self.load_review_config()
+        ai_models_config = self.config.get('ai_models', {})
         
-        # Gemini 초기화
-        gemini_key = os.environ.get('GEMINI_API_KEY')
-        if gemini_key:
-            genai.configure(api_key=gemini_key)
-            self.gemini_client = genai.GenerativeModel('gemini-2.5-pro')
-            self.gemini_model = 'gemini-2.5-pro'
-        else:
-            self.gemini_client = None
-            self.gemini_model = None
+        # GPT 초기화 (config 기반)
+        self.init_gpt_client(ai_models_config.get('gpt', {}))
         
-        # Claude 초기화 (httpx 문제 회피)
-        claude_key = os.environ.get('ANTHROPIC_API_KEY')
-        if claude_key:
-            try:
-                import httpx
-                # httpx 클라이언트를 직접 만들어서 전달
-                http_client = httpx.Client()
-                self.claude_client = anthropic.Anthropic(
-                    api_key=claude_key,
-                    http_client=http_client
-                )
-                self.claude_model = 'claude-4-sonnet'
-            except Exception as e:
-                print(f"Claude 클라이언트 초기화 실패: {e}")
-                self.claude_client = None
-                self.claude_model = None
-        else:
-            self.claude_client = None
-            self.claude_model = None
+        # Gemini 초기화 (config 기반)
+        self.init_gemini_client(ai_models_config.get('gemini', {}))
+        
+        # Claude 초기화 (config 기반)
+        self.init_claude_client(ai_models_config.get('claude', {}))
             
         self.pr_number = int(os.environ['PR_NUMBER'])
         self.repository_name = os.environ['REPOSITORY']
         self.repo = self.github.get_repo(self.repository_name)
         self.pr_action = os.environ.get('PR_ACTION', 'opened')
+    
+    def init_gpt_client(self, gpt_config):
+        """GPT 클라이언트 초기화 (config 기반)"""
+        if not gpt_config.get('enabled', True):
+            self.gpt_client = None
+            self.gpt_model = None
+            return
+            
+        gpt_key = os.environ.get('OPENAI_API_KEY') or os.environ.get('API_KEY')
+        if gpt_key:
+            try:
+                import httpx
+                http_client = httpx.Client()
+                self.gpt_client = OpenAI(
+                    api_key=gpt_key,
+                    http_client=http_client
+                )
+                self.gpt_model = gpt_config.get('model', 'gpt-5')
+                print(f"✅ GPT 클라이언트 초기화 완료: {self.gpt_model}")
+            except Exception as e:
+                print(f"❌ GPT 클라이언트 초기화 실패: {e}")
+                self.gpt_client = None
+                self.gpt_model = None
+        else:
+            self.gpt_client = None
+            self.gpt_model = None
+    
+    def init_gemini_client(self, gemini_config):
+        """Gemini 클라이언트 초기화 (config 기반)"""
+        if not gemini_config.get('enabled', True):
+            self.gemini_client = None
+            self.gemini_model = None
+            return
+            
+        gemini_key = os.environ.get('GEMINI_API_KEY')
+        if gemini_key:
+            try:
+                genai.configure(api_key=gemini_key)
+                model_name = gemini_config.get('model', 'gemini-2.5-pro')
+                self.gemini_client = genai.GenerativeModel(model_name)
+                self.gemini_model = model_name
+                print(f"✅ Gemini 클라이언트 초기화 완료: {self.gemini_model}")
+            except Exception as e:
+                print(f"❌ Gemini 클라이언트 초기화 실패: {e}")
+                self.gemini_client = None
+                self.gemini_model = None
+        else:
+            self.gemini_client = None
+            self.gemini_model = None
+    
+    def init_claude_client(self, claude_config):
+        """Claude 클라이언트 초기화 (config 기반)"""
+        if not claude_config.get('enabled', True):
+            self.claude_client = None
+            self.claude_model = None
+            return
+            
+        claude_key = os.environ.get('ANTHROPIC_API_KEY')
+        if claude_key:
+            try:
+                import httpx
+                http_client = httpx.Client()
+                self.claude_client = anthropic.Anthropic(
+                    api_key=claude_key,
+                    http_client=http_client
+                )
+                self.claude_model = claude_config.get('model', 'claude-4-sonnet')
+                print(f"✅ Claude 클라이언트 초기화 완료: {self.claude_model}")
+            except Exception as e:
+                print(f"❌ Claude 클라이언트 초기화 실패: {e}")
+                self.claude_client = None
+                self.claude_model = None
+        else:
+            self.claude_client = None
+            self.claude_model = None
     
     def load_review_config(self):
         try:

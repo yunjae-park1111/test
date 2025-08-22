@@ -33,15 +33,7 @@ class PRRulesValidator:
                     'min_length': 20,
                     'required_sections': ['## 변경사항', '## 테스트']
                 },
-                'files': {
-                    'max_files_changed': 20,
-                    'max_lines_changed': 500,
-                    'forbidden_paths': ['package-lock.json', '*.log', '.env']
-                },
-                'commits': {
-                    'max_commits': 10,
-                    'required_commit_format': '^(feat|fix|docs|style|refactor|test|chore):'
-                }
+
             }
         }
     
@@ -50,17 +42,11 @@ class PRRulesValidator:
         pr = self.repo.get_pull(self.pr_number)
         violations = []
         
-        # PR 제목 검증
+                # PR 제목 검증
         violations.extend(self.validate_title(pr.title, config['pr_rules']['title']))
         
         # PR 설명 검증
         violations.extend(self.validate_description(pr.body, config['pr_rules']['description']))
-        
-        # 파일 변경사항 검증
-        violations.extend(self.validate_files(pr, config['pr_rules']['files']))
-        
-        # 커밋 검증
-        violations.extend(self.validate_commits(pr, config['pr_rules']['commits']))
         
         return {
             'passed': len(violations) == 0,
@@ -95,45 +81,7 @@ class PRRulesValidator:
         
         return violations
     
-    def validate_files(self, pr, rules):
-        violations = []
-        files = list(pr.get_files())
-        
-        if len(files) > rules['max_files_changed']:
-            violations.append(f"변경된 파일 수가 너무 많습니다. ({len(files)}/{rules['max_files_changed']})")
-        
-        total_changes = sum(file.changes for file in files)
-        if total_changes > rules['max_lines_changed']:
-            violations.append(f"변경된 라인 수가 너무 많습니다. ({total_changes}/{rules['max_lines_changed']})")
-        
-        forbidden_files = []
-        for file in files:
-            for pattern in rules['forbidden_paths']:
-                if pattern in file.filename or re.match(pattern.replace('*', '.*'), file.filename):
-                    forbidden_files.append(file.filename)
-                    break
-        
-        if forbidden_files:
-            violations.append(f"금지된 파일이 포함되어 있습니다: {', '.join(forbidden_files)}")
-        
-        return violations
-    
-    def validate_commits(self, pr, rules):
-        violations = []
-        commits = list(pr.get_commits())
-        
-        if len(commits) > rules['max_commits']:
-            violations.append(f"커밋 수가 너무 많습니다. ({len(commits)}/{rules['max_commits']})")
-        
-        invalid_commits = [
-            commit for commit in commits 
-            if not re.match(rules['required_commit_format'], commit.commit.message)
-        ]
-        
-        if invalid_commits:
-            violations.append(f"커밋 메시지 형식이 올바르지 않습니다: {rules['required_commit_format']}")
-        
-        return violations
+
 
 def main():
     try:

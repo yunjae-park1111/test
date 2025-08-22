@@ -31,9 +31,8 @@ class ViolationHandler:
 3. 문의사항이 있으시면 언제든 코멘트로 남겨주세요
 
 ### 📚 PR 가이드라인
-- [PR 작성 가이드](https://github.com/yunjae-park1111/test/blob/main/docs/pr-guide.md)
-- [커밋 메시지 컨벤션](https://github.com/yunjae-park1111/test/blob/main/docs/commit-convention.md)
-- [코딩 컨벤션](https://github.com/yunjae-park1111/test/blob/main/docs/coding-convention.md)
+- PR 제목: `feat:`, `fix:`, `docs:`, `style:`, `refactor:`, `test:`, `chore:`, `hotfix:` 중 하나로 시작 (최소 10자)
+- PR 설명: 최소 30자 이상, `## 변경사항`, `## 테스트` 섹션 포함
 
 ---
 > 🤖 이 메시지는 자동으로 생성되었습니다. PR 룰을 준수하여 다시 제출해주세요."""
