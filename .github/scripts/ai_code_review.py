@@ -4,7 +4,7 @@ import os
 import sys
 import yaml
 from github import Github
-from openai import OpenAI
+import openai
 import google.generativeai as genai
 import anthropic
 
@@ -12,15 +12,14 @@ class AICodeReviewer:
     def __init__(self):
         self.github = Github(os.environ['GITHUB_TOKEN'])
         
-        # GPT 초기화 (OpenAI v1 방식)
-        gpt_key = os.environ.get('OPENAI_API_KEY')
+        # GPT 초기화 (옛날 방식으로 복원)
+        gpt_key = os.environ.get('OPENAI_API_KEY') or os.environ.get('API_KEY')
         if gpt_key:
-            print(f"GPT 키: {gpt_key}")
-            print(f"GPT 모델: {OpenAI(api_key=gpt_key)}")
-            self.gpt_client = OpenAI(api_key=gpt_key)
+            openai.api_key = gpt_key
+            self.gpt_available = True
             self.gpt_model = 'gpt-5'
         else:
-            self.gpt_client = None
+            self.gpt_available = False
             self.gpt_model = None
         
         # Gemini 초기화
@@ -174,9 +173,9 @@ class AICodeReviewer:
             system_message = "당신은 경험 많은 시니어 개발자입니다. 코드 리뷰를 수행하여 보안, 성능, 유지보수성, 베스트 프랙티스 관점에서 건설적인 피드백을 제공하세요."
             
             if ai_name == 'gpt':
-                if not self.gpt_client:
+                if not self.gpt_available:
                     return None
-                response = self.gpt_client.chat.completions.create(
+                response = openai.ChatCompletion.create(
                     model=ai_config.get('model', self.gpt_model),
                     messages=[
                         {'role': 'system', 'content': system_message},
@@ -185,7 +184,7 @@ class AICodeReviewer:
                     max_tokens=ai_config.get('max_tokens', 1200),
                     temperature=ai_config.get('temperature', 0.2)
                 )
-                return response.choices[0].message.content
+                return response['choices'][0]['message']['content']
             
             elif ai_name == 'gemini':
                 if not self.gemini_client:

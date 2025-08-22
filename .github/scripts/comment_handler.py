@@ -5,7 +5,7 @@ import sys
 import yaml
 import re
 from github import Github
-from openai import OpenAI
+import openai
 import httpx
 import google.generativeai as genai
 import anthropic
@@ -45,15 +45,14 @@ class CommentHandler:
     
     def init_ai_clients(self):
         """AI 클라이언트들 초기화"""
-        # GPT 초기화
+        # GPT 초기화 (구 버전 방식)
         gpt_key = os.environ.get('OPENAI_API_KEY')
         if gpt_key:
-            self.gpt_client = OpenAI(
-                api_key=gpt_key
-            )
+            openai.api_key = gpt_key
+            self.gpt_available = True
             self.gpt_model = 'gpt-5'
         else:
-            self.gpt_client = None
+            self.gpt_available = False
             self.gpt_model = None
         
         # Gemini 초기화
@@ -188,7 +187,7 @@ class CommentHandler:
 """
             
             # 사용 가능한 AI 중 하나로 응답 생성 (우선순위: GPT > Claude > Gemini)
-            if self.gpt_client and config.get('ai_models', {}).get('gpt', {}).get('enabled', True):
+            if self.gpt_available and config.get('ai_models', {}).get('gpt', {}).get('enabled', True):
                 return self.generate_with_ai('gpt', prompt, config)
             elif self.claude_client and config.get('ai_models', {}).get('claude', {}).get('enabled', True):
                 return self.generate_with_ai('claude', prompt, config)
@@ -206,8 +205,8 @@ class CommentHandler:
         try:
             ai_config = config.get('ai_models', {}).get(ai_name, {})
             
-            if ai_name == 'gpt' and self.gpt_client:
-                response = self.gpt_client.chat.completions.create(
+            if ai_name == 'gpt' and self.gpt_available:
+                response = openai.ChatCompletion.create(
                     model=ai_config.get('model', self.gpt_model),
                     messages=[
                         {'role': 'system', 'content': '당신은 친근하고 전문적인 코드 리뷰어입니다. 사용자의 질문에 도움이 되는 답변을 제공하세요.'},
@@ -216,7 +215,7 @@ class CommentHandler:
                     max_tokens=ai_config.get('max_tokens', 800),
                     temperature=ai_config.get('temperature', 0.3)
                 )
-                return response.choices[0].message.content
+                return response['choices'][0]['message']['content']
             
             elif ai_name == 'claude' and self.claude_client:
                 response = self.claude_client.messages.create(
