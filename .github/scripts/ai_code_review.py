@@ -18,13 +18,10 @@ class AICodeReviewer:
         # GPT 초기화
         gpt_key = os.environ.get('OPENAI_API_KEY')
         if gpt_key:
-            # 프록시 문제 해결을 위해 HTTP 클라이언트 명시적 설정
-            http_client = httpx.Client()
             self.gpt_client = OpenAI(
-                api_key=gpt_key,
-                http_client=http_client
+                api_key=gpt_key
             )
-            self.gpt_model = 'gpt-5'
+            self.gpt_model = 'gpt-4o'
         else:
             self.gpt_client = None
             self.gpt_model = None
@@ -33,8 +30,8 @@ class AICodeReviewer:
         gemini_key = os.environ.get('GEMINI_API_KEY')
         if gemini_key:
             genai.configure(api_key=gemini_key)
-            self.gemini_client = genai.GenerativeModel('gemini-2.5-pro')
-            self.gemini_model = 'gemini-2.5-pro'
+            self.gemini_client = genai.GenerativeModel('gemini-1.5-pro')
+            self.gemini_model = 'gemini-1.5-pro'
         else:
             self.gemini_client = None
             self.gemini_model = None
@@ -64,13 +61,13 @@ class AICodeReviewer:
         return {
             'ai_models': {
                 'gpt': {
-                    'model': 'gpt-5',
+                    'model': 'gpt-4o',
                     'max_tokens': 1200,
                     'temperature': 0.2,
                     'enabled': True
                 },
                 'gemini': {
-                    'model': 'gemini-2.5-pro',
+                    'model': 'gemini-1.5-pro',
                     'max_tokens': 1200,
                     'temperature': 0.2,
                     'enabled': True
