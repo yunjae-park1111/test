@@ -20,7 +20,7 @@ const calculateTotal = (items) => {
 };
 
 // 2. 안전한 데이터베이스 쿼리 - 준비된 문장 사용
-const safeQuery = async (db, userInput) => {
+const safeQuery = async (db, userInput) => { 
     try {
         const query = 'SELECT * FROM users WHERE name = ?';
         return await db.query(query, [userInput]);

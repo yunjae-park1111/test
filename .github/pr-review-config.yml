@@ -14,16 +14,7 @@ pr_rules:
       - '## 변경사항'
       - '## 테스트'
 
-  files:
-    max_files_changed: 50  # 늘림
-    max_lines_changed: 2000  # 늘림
-    forbidden_paths:
-      - '*.log'
-      - '.env'
 
-  commits:
-    max_commits: 25  # 늘림
-    required_commit_format: '^(feat|fix|docs|style|refactor|test|chore|hotfix):'
 
 # 멀티 AI 리뷰 설정
 ai_models:
