@@ -39,6 +39,11 @@ critical_keywords:
   - 버그
   - bug
 
+bot_users:
+  - github-actions[bot]
+  - github-actions
+  - dependabot[bot]
+
 file_extensions:
   .py: python
   .js: javascript

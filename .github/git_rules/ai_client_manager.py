@@ -109,7 +109,10 @@ class AIClientManager:
             elif ai_name == 'gemini' and self.gemini_client:
                 full_prompt = f"{system_message}\n\n{prompt}"
                 response = self.gemini_client.generate_content(full_prompt)
-                return response.parts[0].text
+                if response.parts:
+                    return response.parts[0].text
+                else:
+                    return response.text
             
         except Exception as e:
             print(f"❌ {ai_name} 응답 생성 실패: {e}")
