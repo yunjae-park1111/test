@@ -39,6 +39,7 @@ function loadConfig() {
 const user_data = {};
 const configData = {};
 const UserService = {};
+const bcrypt = require('bcrypt');
 
 // 🚨 크리티컬 이슈: 에러 처리 없는 Promise
 async function fetchUserData(id) {
