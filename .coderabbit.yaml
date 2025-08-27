@@ -107,5 +107,8 @@ path_filters:
 # ============================================================================
 chatops:
   chat:
-    # 리뷰 수행시 기본 지시사항
-    instructions: "Please review this code for security, performance, and maintainability. Focus on potential bugs, optimization opportunities, and code quality improvements."
+    # 리뷰 수행시 기본 지시사항 (간결하고 기술적 리뷰만)
+    instructions: "Review code for bugs, security issues, and performance problems. Provide technical feedback only."
+    
+  # poem 기능 비활성화
+  poem: false
