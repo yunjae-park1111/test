@@ -1,14 +1,14 @@
-# CodeRabbit 설정 파일
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+
 reviews:
-  auto_review: true
-  
-  # 리뷰 대상 파일 패턴
+  auto_review:
+    enabled: true
+    
   include_patterns:
     - "**/*.{js,ts,jsx,tsx}"
     - "**/*.{py,java,go,cpp,c,cs}"
     - "**/*.{yml,yaml,json,md}"
   
-  # 리뷰 제외 파일 패턴
   exclude_patterns:
     - "node_modules/**"
     - "dist/**"
@@ -17,6 +17,12 @@ reviews:
     - "coverage/**"
     - "vendor/**"
     - ".git/**"
+
+  request_changes_workflow: false
+  base_branches:
+    - "main"
+    - "master"
+    - "develop"
 
 # 리뷰 설정
 review_settings:
@@ -54,3 +60,18 @@ quality:
   complexity_threshold: 10
   duplication_check: true
   function_length_threshold: 50
+
+path_filters:
+  - path_globs:
+      - "**/*.js"
+      - "**/*.ts"
+      - "**/*.jsx"
+      - "**/*.tsx"
+      - "**/*.py"
+      - "**/*.java"
+      - "**/*.go"
+      - "**/*.md"
+
+chatops:
+  chat:
+    instructions: "Please review this code for security, performance, and maintainability."
