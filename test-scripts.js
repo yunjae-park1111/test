@@ -39,7 +39,7 @@ try {
   console.error('❌ 설정 파일 읽기 실패:', error.message);
 }
 
-// 3. JavaScript 스크립트 문법 검증
+// 3. JavaScript 스크립트 문법 검증ㄴㅇㄹㄴㅇㄹㄴㅇㄹㄴㅇㄹ
 console.log('\n3. 📝 JavaScript 스크립트 문법 검증');
 const scripts = [
   '.github/scripts/validate-pr-rules.js',
