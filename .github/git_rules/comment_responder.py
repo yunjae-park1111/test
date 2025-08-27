@@ -6,6 +6,7 @@ PR의 코멘트에 AI가 자동으로 응답
 
 import os
 import re
+import yaml
 from github import Github
 from ai_client_manager import AIClientManager
 
@@ -19,6 +20,16 @@ class CommentResponder:
         self.pr = self.repo.get_pull(self.pr_number)
         self.comment_id = int(os.environ.get('COMMENT_ID', 0))
         self.ai_manager = AIClientManager()
+        self.config = self.load_config()
+    
+    def load_config(self):
+        """설정 파일 로드"""
+        config_files = ['.github/pr-review-config.yml', '.github/git_rules/templates/config.yml']
+        for config_file in config_files:
+            if os.path.exists(config_file):
+                with open(config_file, 'r', encoding='utf-8') as f:
+                    return yaml.safe_load(f)
+        raise FileNotFoundError("설정 파일을 찾을 수 없습니다")
     
     def load_template(self, template_name):
         """템플릿 파일 로드"""
@@ -35,44 +46,24 @@ class CommentResponder:
         mentions = re.findall(mention_pattern, comment_body)
         return mentions
     
-    def should_respond(self, comment_body, mentions):
+    def should_respond(self, comment_body, mentions, comment_user):
         """AI가 응답해야 하는 코멘트인지 판단"""
-        comment_lower = comment_body.lower()
+        # 봇 자신의 코멘트는 무시 (무한 재귀 방지)
+        bot_users = self.config.get('bot_users', ['github-actions[bot]', 'github-actions'])
+        if comment_user.lower() in [bot.lower() for bot in bot_users]:
+            return False
         
-        # 트리거 키워드 확인
-        trigger_keywords = [
-            '리뷰', 'review', '설명', 'explain', '분석', 'analyze',
-            '체크', 'check', '확인', 'verify', '검토', '피드백', 'feedback'
-        ]
-        
-        if any(keyword in comment_lower for keyword in trigger_keywords):
-            return True
-        
-        # 봇이 멘션된 경우
-        bot_mentions = ['github-actions', 'bot', 'ai', 'review', 'reviewer']
-        if any(mention.lower() in bot_mentions for mention in mentions):
-            return True
-        
-        return False
+        # 정상적인 사용자 멘션만 응답
+        return 'tkai-pr-bot' in [m.lower() for m in mentions]
     
     def format_response(self, ai_response, ai_display_name):
         """AI 응답을 템플릿으로 포맷팅"""
         template = self.load_template('comment_response.md')
         
-        if template:
-            return template.format(
-                ai_response=ai_response,
-                ai_display_name=ai_display_name
-            )
-        else:
-            # 기본 포맷
-            return f"""🤖 **AI 코드 어시스턴트 응답**
-
-{ai_response}
-
----
-> 💡 추가 질문이나 더 자세한 설명이 필요하시면 언제든 말씀해주세요!
-> 🔧 **AI 모델**: {ai_display_name}"""
+        return template.format(
+            ai_response=ai_response,
+            ai_display_name=ai_display_name
+        )
     
     def respond_to_comment(self):
         """코멘트에 AI 응답 생성"""
@@ -89,31 +80,76 @@ class CommentResponder:
             print(f"📝 코멘트 분석: {comment_user} - '{comment_body[:50]}...'")
             
             # 응답이 필요한지 확인
-            if not self.should_respond(comment_body, mentions):
+            if not self.should_respond(comment_body, mentions, comment_user):
                 print("응답이 필요하지 않은 코멘트입니다.")
                 return
             
-            # AI 응답 생성
-            simple_prompt = f"""사용자 질문: "{comment_body}"
-PR 제목: {self.pr.title}
-친근하게 한국어로 답변해주세요."""
+            # AI 응답 생성 - 풍부한 컨텍스트 포함
+            # PR 기본 정보
+            pr_info = f"""PR 제목: {self.pr.title}
+PR 설명: {self.pr.body or '설명 없음'}"""
             
-            ai_name, ai_display_name = self.ai_manager.get_available_ai()
-            if ai_name:
-                ai_response = self.ai_manager.generate_with_ai(
-                    ai_name,
-                    simple_prompt,
-                    "당신은 친근하고 전문적인 코드 리뷰어입니다. 사용자의 질문에 도움이 되는 답변을 제공하세요."
-                )
+            # 변경된 파일 정보
+            files_info = "변경된 파일들:\n"
+            try:
+                files = list(self.pr.get_files())
+                for file in files:
+                    files_info += f"\n파일: {file.filename} (+{file.additions}/-{file.deletions})\n"
+                    if file.patch:
+                        files_info += f"```diff\n{file.patch}\n```\n"
+                    else:
+                        files_info += "변경사항 없음\n"
+            except:
+                files_info += "파일 정보 로드 실패\n"
+            
+            # 모든 코멘트들 (AI 리뷰 결과 포함)
+            comments_info = "모든 코멘트들:\n"
+            try:
+                comments = list(self.pr.get_issue_comments())
+                for comment in comments:
+                    author = comment.user.login
+                    body = comment.body
+                    comments_info += f"- {author}: {body}\n"
+            except:
+                comments_info += "코멘트 로드 실패\n"
+            
+            # 템플릿 로드
+            prompt_template = self.load_template('comment_request.md')
+            detailed_prompt = prompt_template.format(
+                comment_body=comment_body,
+                pr_info=pr_info,
+                files_info=files_info,
+                comments_info=comments_info
+            )
+            
+            all_ais = self.ai_manager.get_all_available_ais()
+            if all_ais:
+                responses_created = 0
                 
-                if ai_response:
-                    formatted_response = self.format_response(ai_response, ai_display_name)
+                # 모든 사용 가능한 AI로 각각 응답 생성
+                for ai_name, ai_display_name in all_ais:
+                    print(f"🔍 {ai_display_name}으로 응답 생성 중...")
                     
-                    # 응답 작성
-                    self.pr.create_issue_comment(formatted_response)
-                    print(f"✅ AI 응답 작성 완료 ({ai_display_name})")
+                    ai_response = self.ai_manager.generate_with_ai(
+                        ai_name,
+                        detailed_prompt,
+                        "당신은 친근하고 전문적인 코드 리뷰어입니다. PR 컨텍스트를 바탕으로 정확하고 도움이 되는 답변을 제공하세요."
+                    )
+                    
+                    if ai_response:
+                        formatted_response = self.format_response(ai_response, ai_display_name)
+                        
+                        # 각 AI별로 개별 응답 작성
+                        self.pr.create_issue_comment(formatted_response)
+                        print(f"  ✅ {ai_display_name} 응답 작성 완료")
+                        responses_created += 1
+                    else:
+                        print(f"  ❌ {ai_display_name} 응답 생성 실패")
+                
+                if responses_created > 0:
+                    print(f"✅ 총 {responses_created}개 AI 응답 완료")
                 else:
-                    print("❌ AI 응답 생성 실패")
+                    print("❌ 모든 AI 응답 생성 실패")
             else:
                 print("❌ 사용 가능한 AI가 없습니다.")
         

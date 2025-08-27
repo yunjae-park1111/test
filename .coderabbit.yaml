@@ -1,19 +1,14 @@
-# CodeRabbit 설정 파일
-# 이 파일은 AI 코드 리뷰의 동작을 제어합니다.
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
 
 reviews:
-  # 자동 리뷰 활성화
-  auto_review: true
-  
-  # 리뷰 대상 파일 패턴
+  auto_review:
+    enabled: true
+    
   include_patterns:
-    - "src/**/*.{js,ts,jsx,tsx}"
-    - "lib/**/*.py"
-    - "**/*.go"
-    - "test-files/**/*.js"  # 테스트용 파일 포함
-    - "*.{md,yml,yaml,json}"
+    - "**/*.{js,ts,jsx,tsx}"
+    - "**/*.{py,java,go,cpp,c,cs}"
+    - "**/*.{yml,yaml,json,md}"
   
-  # 리뷰 제외 파일 패턴
   exclude_patterns:
     - "node_modules/**"
     - "dist/**"
@@ -23,190 +18,60 @@ reviews:
     - "vendor/**"
     - ".git/**"
 
+  request_changes_workflow: false
+  base_branches:
+    - "main"
+    - "master"
+    - "develop"
+
 # 리뷰 설정
 review_settings:
-  # 리뷰 강도: low, medium, high
-  thoroughness: "high"
+  thoroughness: "medium"
   
-  # 중점 검토 영역
   focus_areas:
-    - "security"          # 보안 취약점
-    - "performance"       # 성능 최적화
-    - "maintainability"   # 유지보수성
-    - "testing"           # 테스트 커버리지
-    - "documentation"     # 문서화
+    - "security"
+    - "performance" 
+    - "maintainability"
+    - "testing"
+    - "documentation"
   
-  # 언어별 특화 설정
+  # 언어별 설정
   language_specific:
     javascript:
       check_async_patterns: true
-      enforce_typescript: true
       check_console_statements: true
       detect_unused_variables: true
     
     python:
       check_pep8: true
       security_analysis: true
-      type_hint_enforcement: true
     
     markdown:
       check_links: true
-      spell_check: false  # 한국어 지원 이슈로 비활성화
+      spell_check: false
 
-# 커스텀 리뷰 규칙
-custom_rules:
-  # 네이밍 컨벤션
-  naming_conventions:
-    functions: "camelCase"
-    variables: "camelCase"
-    constants: "UPPER_SNAKE_CASE"
-    classes: "PascalCase"
-  
-  # 금지된 패턴들
-  code_patterns:
-    forbidden_patterns:
-      - pattern: "console.log"
-        message: "프로덕션 코드에서 console.log 사용을 피하세요. 로깅 라이브러리를 사용하거나 개발 환경에서만 사용하도록 조건을 추가하세요."
-        severity: "medium"
-      
-      - pattern: "TODO:"
-        message: "TODO 주석은 GitHub 이슈로 등록하여 체계적으로 관리하세요."
-        severity: "low"
-      
-      - pattern: "eval\\("
-        message: "eval() 함수 사용은 심각한 보안 위험을 초래할 수 있습니다. 대안을 찾아보세요."
-        severity: "high"
-      
-      - pattern: "innerHTML\\s*="
-        message: "innerHTML 직접 할당은 XSS 공격에 취약할 수 있습니다. textContent나 안전한 DOM 조작 방법을 사용하세요."
-        severity: "medium"
-
-# 보안 규칙
-security_rules:
-  # 기본 보안 검사
+# 보안 검사
+security:
   secrets_detection: true
   dependency_check: true
-  sql_injection_check: true
-  xss_prevention: true
   
-  # 커스텀 보안 패턴
-  custom_security_patterns:
-    - pattern: "password\\s*=\\s*['\"].*['\"]"
-      severity: "high"
-      message: "하드코딩된 패스워드를 발견했습니다. 환경변수나 보안 저장소를 사용하세요."
-    
-    - pattern: "api[_-]?key\\s*=\\s*['\"].*['\"]"
-      severity: "high"
-      message: "API 키가 하드코딩되어 있습니다. 환경변수로 관리하세요."
-    
-    - pattern: "SELECT\\s+.*\\s+FROM\\s+.*\\s*\\+\\s*"
-      severity: "high"
-      message: "SQL 인젝션 취약점이 의심됩니다. 준비된 문장(Prepared Statement)을 사용하세요."
+# 코드 품질
+quality:
+  complexity_threshold: 10
+  duplication_check: true
+  function_length_threshold: 50
 
-# 성능 규칙
-performance_rules:
-  # 성능 최적화 검사
-  check_algorithmic_complexity: true
-  detect_memory_leaks: true
-  analyze_loop_efficiency: true
-  
-  # 성능 관련 패턴
-  performance_patterns:
-    - pattern: "for\\s*\\(.*\\s*;\\s*.*\\.length\\s*;.*\\)"
-      message: "반복문에서 매번 length를 계산하고 있습니다. 길이를 변수에 저장하여 성능을 개선하세요."
-      severity: "low"
+path_filters:
+  - path_globs:
+      - "**/*.js"
+      - "**/*.ts"
+      - "**/*.jsx"
+      - "**/*.tsx"
+      - "**/*.py"
+      - "**/*.java"
+      - "**/*.go"
+      - "**/*.md"
 
-# 코드 품질 규칙
-quality_rules:
-  # 복잡도 임계값
-  complexity_thresholds:
-    cyclomatic: 10
-    cognitive: 15
-    nesting_depth: 4
-  
-  # 코드 중복 검사
-  duplication_check:
-    enabled: true
-    minimum_lines: 5
-  
-  # 함수 크기 제한
-  function_size:
-    max_lines: 50
-    max_parameters: 5
-
-# 팀 설정
-team_settings:
-  # 리뷰 할당 규칙
-  review_assignments:
-    - reviewer: "senior-developer"
-      condition: "high_complexity"
-    - reviewer: "security-team"
-      condition: "security_related"
-    - reviewer: "performance-team"
-      condition: "performance_critical"
-  
-  # 알림 설정
-  notification_settings:
-    # Slack 웹훅 (실제 사용시 환경변수로 관리)
-    slack_webhook: "${SLACK_WEBHOOK_URL}"
-    channels:
-      - "#code-review"
-      - "#security-alerts"
-    
-    # 스팸 방지
-    spam_prevention: true
-    minimum_severity: "medium"
-    batch_notifications: true
-    
-    # 조용한 시간 (한국 시간 기준)
-    quiet_hours:
-      start: "22:00"
-      end: "09:00"
-      timezone: "Asia/Seoul"
-
-# 학습 및 개선 설정
-learning_settings:
-  # 팀 피드백 통합
-  team_feedback_integration: true
-  
-  # 잘못된 긍정 학습
-  false_positive_learning: true
-  
-  # 컨텍스트 인식 수준
-  context_awareness: "high"
-  
-  # 프로젝트별 패턴 학습
-  project_specific_patterns: true
-  
-  # 점진적 개선
-  adaptive_learning: true
-
-# 리포팅 설정
-reporting:
-  # 주간 리포트 생성
-  weekly_reports: true
-  
-  # 메트릭 수집
-  collect_metrics:
-    - "review_completion_time"
-    - "issue_detection_rate"
-    - "false_positive_rate"
-    - "developer_satisfaction"
-  
-  # 대시보드 설정
-  dashboard_enabled: true
-  public_metrics: false
-
-# 실험적 기능
-experimental_features:
-  # AI 기반 코드 제안
-  ai_suggestions: true
-  
-  # 자동 수정 제안
-  auto_fix_suggestions: false  # 안전을 위해 비활성화
-  
-  # 성능 프로파일링
-  performance_profiling: true
-  
-  # 테스트 생성 제안
-  test_generation: true
+chatops:
+  chat:
+    instructions: "Please review this code for security, performance, and maintainability."
