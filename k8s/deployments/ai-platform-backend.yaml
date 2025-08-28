@@ -23,14 +23,11 @@ spec:
         app: ai-platform-backend
         version: v1.0.0
       annotations:
-        prometheus.io/scrape: "true"
-        prometheus.io/port: "8080"
-        prometheus.io/path: "/metrics"
+        prometheus.io/scrape: 'true'
+        prometheus.io/port: '8080'
+        prometheus.io/path: /metrics
     spec:
-      # 보안 강화를 위한 ServiceAccount
       serviceAccountName: ai-platform-backend-sa
-      
-      # 보안 컨텍스트 설정
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
@@ -38,8 +35,6 @@ spec:
         fsGroup: 1000
         seccompProfile:
           type: RuntimeDefault
-      
-      # 노드 스케줄링 전략
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
@@ -52,21 +47,16 @@ spec:
                   values:
                   - ai-platform-backend
               topologyKey: kubernetes.io/hostname
-      
       containers:
       - name: backend
         image: ai-platform/backend:v1.0.0
         imagePullPolicy: Always
-        
-        # 보안 컨텍스트
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
           capabilities:
             drop:
             - ALL
-        
-        # 포트 설정
         ports:
         - containerPort: 8080
           name: http
@@ -74,35 +64,27 @@ spec:
         - containerPort: 9090
           name: metrics
           protocol: TCP
-        
-        # 환경 변수
         env:
         - name: FASTAPI_ENV
-          value: "production"
+          value: production
         - name: LOG_LEVEL
-          value: "INFO"
+          value: INFO
         - name: PROMETHEUS_ENABLED
-          value: "true"
+          value: 'true'
         - name: KUBECONFIG_PATH
-          value: "/var/run/secrets/kubernetes.io/serviceaccount"
-        
-        # 환경 변수 (ConfigMap/Secret에서)
+          value: /var/run/secrets/kubernetes.io/serviceaccount
         envFrom:
         - configMapRef:
             name: ai-platform-config
         - secretRef:
             name: ai-platform-secrets
-        
-        # 리소스 제한
         resources:
           requests:
-            memory: "512Mi"
-            cpu: "250m"
+            memory: 512Mi
+            cpu: 250m
           limits:
-            memory: "2Gi"
-            cpu: "1000m"
-        
-        # 헬스체크
+            memory: 2Gi
+            cpu: 1000m
         livenessProbe:
           httpGet:
             path: /health
@@ -111,7 +93,6 @@ spec:
           periodSeconds: 10
           timeoutSeconds: 5
           failureThreshold: 3
-        
         readinessProbe:
           httpGet:
             path: /ready
@@ -120,8 +101,6 @@ spec:
           periodSeconds: 5
           timeoutSeconds: 3
           failureThreshold: 3
-        
-        # 볼륨 마운트
         volumeMounts:
         - name: tmp-volume
           mountPath: /tmp
@@ -130,8 +109,6 @@ spec:
         - name: config-volume
           mountPath: /app/config
           readOnly: true
-      
-      # 볼륨 정의
       volumes:
       - name: tmp-volume
         emptyDir: {}
@@ -141,59 +118,7 @@ spec:
       - name: config-volume
         configMap:
           name: ai-platform-config
-          defaultMode: 0444
-      
-      # DNS 정책
+          defaultMode: 292
       dnsPolicy: ClusterFirst
-      
-      # 재시작 정책
       restartPolicy: Always
-      
-      # 종료 시간 제한
       terminationGracePeriodSeconds: 30
-
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: ai-platform-backend-sa
-  namespace: ai-platform
-  labels:
-    app: ai-platform-backend
-automountServiceAccountToken: true
-
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: ai-platform-backend-role
-rules:
-# Kubernetes API 접근 권한 (최소 권한 원칙)
-- apiGroups: [""]
-  resources: ["pods", "nodes"]
-  verbs: ["get", "list", "watch"]
-- apiGroups: ["apps"]
-  resources: ["deployments"]
-  verbs: ["get", "list", "watch"]
-# Kubeflow 파이프라인 접근
-- apiGroups: ["argoproj.io"]
-  resources: ["workflows"]
-  verbs: ["get", "list", "watch", "create", "update", "patch"]
-# 메트릭 수집
-- apiGroups: ["metrics.k8s.io"]
-  resources: ["pods", "nodes"]
-  verbs: ["get", "list"]
-
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: ai-platform-backend-binding
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: ai-platform-backend-role
-subjects:
-- kind: ServiceAccount
-  name: ai-platform-backend-sa
-  namespace: ai-platform
