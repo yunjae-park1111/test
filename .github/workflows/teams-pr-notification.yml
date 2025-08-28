@@ -9,10 +9,6 @@ on:
       - 'release-v*'
       - 'epic/#*'
 
-concurrency:
-  group: pr-review-notification-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
-
 jobs:
   notify:
     runs-on: ubuntu-latest
@@ -36,11 +32,6 @@ jobs:
             echo "실제 리뷰어가 없습니다 (coderabbit만 할당됨 또는 리뷰어 없음). 알림을 보내지 않습니다."
             exit 0
           fi
-          
-          # 10초 대기 (여러 리뷰어 연속 할당 시 알림 중복 방지)
-          echo "실제 리뷰어 할당 확인: $REVIEWERS"
-          echo "10초 대기 중..."
-          sleep 10
           
           # JSON 특수문자 이스케이프 (제목에 따옴표 등이 있을 경우 대비)
           PR_TITLE_ESCAPED=$(echo "$PR_TITLE" | sed 's/"/\\"/g')
