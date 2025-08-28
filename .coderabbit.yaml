@@ -1,77 +1,137 @@
-# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+# yaml-language-server: $schema=https://storage.googleapis.com/coderabbit_public_assets/schema.v2.json
+
+# CodeRabbit 설정 - AI Platform Web UI
+# 📝 주석 처리된 값들은 대시보드 기본값입니다
+# 📚 상세 설명: docs/coderabbit-config.md
+
+# language: 'ko-KR'  # 기본값: 'ko-KR' | 리뷰 언어 설정
+tone_instructions: "AI/ML 플랫폼 개발 관점에서 Kubernetes, FastAPI, React 모범 사례를 고려하여 리뷰해주세요. 보안, 성능, 확장성에 특히 주의하며, 코드의 실용성과 유지보수성을 중시합니다."  # AI Platform 전용 리뷰 톤
+# early_access: false  # 기본값: false | 베타 기능 활성화
+# enable_free_tier: true  # 기본값: true | 무료 플랜 기능 사용
 
 reviews:
-  auto_review:
-    enabled: true
-    
-  include_patterns:
+  # profile: 'chill'  # 기본값: 'chill' | 리뷰 강도 설정 (chill/assertive)
+  # request_changes_workflow: false  # 기본값: false | 변경사항 요청 워크플로우
+  # high_level_summary: true  # 기본값: true | PR 상위 수준 요약 생성
+  # high_level_summary_placeholder: "@coderabbitai summary"  # 기본값: "@coderabbitai summary" | 요약 플레이스홀더
+  # high_level_summary_in_walkthrough: true  # 기본값: false | 워크스루에 요약 포함
+  # auto_title_placeholder: "@coderabbitai"  # 기본값: "@coderabbitai" | 자동 제목 생성 키워드
+  auto_title_instructions: ""  # 기본값: "" | 자동 제목 생성 지침 (GitHub Actions에서 처리)
+  # review_status: true  # 기본값: true | 리뷰 상태 코멘트 게시
+  # commit_status: true  # 기본값: true | Git 커밋 상태 업데이트
+  # fail_commit_status: true  # 기본값: false | 리뷰 실패시 커밋 상태 failure
+  # collapse_walkthrough: false  # 기본값: false | 워크스루 접기
+  # changed_files_summary: true  # 기본값: true | 변경된 파일 요약
+  # sequence_diagrams: true  # 기본값: true | 시퀀스 다이어그램 생성
+  # estimate_effort: true  # 기본값: false | 리뷰 노력도 추정
+  # assess_linked_issues: true  # 기본값: true | 연결된 이슈 해결도 평가
+  # related_issues: false  # 기본값: true | 관련 이슈 표시
+  # related_prs: false  # 기본값: true | 관련 PR 표시
+  # suggested_labels: false  # 기본값: true | 라벨 제안
+  # auto_apply_labels: false  # 기본값: false | 라벨 자동 적용
+  # suggested_reviewers: false  # 기본값: true | 리뷰어 제안
+  # auto_assign_reviewers: false  # 기본값: false | 리뷰어 자동 할당
+  # poem: false  # 기본값: true | 시 생성
+  # labeling_instructions: []  # 기본값: [] | 라벨링 가이드라인
+  
+  path_filters:  # 리뷰 대상 파일 패턴
     - "**/*.{js,ts,jsx,tsx}"
-    - "**/*.{py,java,go,cpp,c,cs}"
+    - "**/*.{py,prisma,sql}"
     - "**/*.{yml,yaml,json,md}"
+    - "!node_modules/**"
+    - "!dist/**"
+    - "!build/**"
+    - "!coverage/**"
+    - "!pnpm-lock.yaml"
+    - "!package-lock.json"
   
-  exclude_patterns:
-    - "node_modules/**"
-    - "dist/**"
-    - "build/**"
-    - "*.min.js"
-    - "coverage/**"
-    - "vendor/**"
-    - ".git/**"
-
-  request_changes_workflow: false
-  base_branches:
-    - "main"
-    - "master"
-    - "develop"
-
-# 리뷰 설정
-review_settings:
-  thoroughness: "medium"
+  path_instructions:
+    - path: "ai-platform-backend/**/*.py"
+      instructions: "FastAPI 모범 사례, async/await 패턴, Pydantic 모델 검증, SQLAlchemy ORM 최적화, Kubernetes API 호출 시 에러 핸들링, Kubeflow 파이프라인 통합, Prometheus 메트릭 수집을 중점적으로 검토"
+    - path: "vllm-benchmark/**/*.py"
+      instructions: "MongoDB 쿼리 최적화, GitHub API 통합, Kubernetes API 호출, 벤치마크 정확성, 큐 관리 로직, 비동기 처리 패턴을 중점적으로 검토"
+    - path: "**/*.{ts,tsx}"
+      instructions: "React 모범 사례, TypeScript 타입 안전성, 9ui 컴포넌트 패턴, TailwindCSS 일관성, 상태 관리 최적화를 중점적으로 검토"
+    - path: "**/*.{yaml,yml}"
+      instructions: "Kubernetes 매니페스트, Helm 차트, CI/CD 파이프라인의 보안성과 모범 사례를 중점적으로 검토"
+    - path: "**/Dockerfile"
+      instructions: "Docker 보안 모범 사례, 멀티스테이지 빌드, 이미지 크기 최적화, 취약점 최소화를 중점적으로 검토"
+  # abort_on_close: true  # 기본값: true | PR 닫힘시 리뷰 중단
+  # disable_cache: false  # 기본값: false | 캐시 비활성화
   
-  focus_areas:
-    - "security"
-    - "performance" 
-    - "maintainability"
-    - "testing"
-    - "documentation"
-  
-  # 언어별 설정
-  language_specific:
-    javascript:
-      check_async_patterns: true
-      check_console_statements: true
-      detect_unused_variables: true
-    
-    python:
-      check_pep8: true
-      security_analysis: true
-    
-    markdown:
-      check_links: true
-      spell_check: false
+  auto_review:
+    # enabled: true  # 기본값: true | 자동 리뷰 활성화
+    # auto_incremental_review: true  # 기본값: true | 증분 리뷰
+    ignore_title_keywords:  # 기본값: [] | 리뷰 제외 키워드
+    #   - ""
+    labels: []  # 기본값: [] | 리뷰 대상 라벨 필터
+    drafts: false  # 기본값: false | 드래프트 PR 리뷰
+    base_branches:  # 리뷰 대상 브랜치
+      - "main"
+      - "dev"
+      - "epic/#*"
+      - "release-v*"
+    # ignore_usernames: []  # 기본값: [] | 리뷰 제외 사용자
 
-# 보안 검사
-security:
-  secrets_detection: true
-  dependency_check: true
-  
-# 코드 품질
-quality:
-  complexity_threshold: 10
-  duplication_check: true
-  function_length_threshold: 50
+finishing_touches:
+  docstrings:
+    # enabled: true  # 기본값: true | 독스트링 자동 생성
+  unit_tests:
+    # enabled: true  # 기본값: true | 단위 테스트 자동 생성
 
-path_filters:
-  - path_globs:
-      - "**/*.js"
-      - "**/*.ts"
-      - "**/*.jsx"
-      - "**/*.tsx"
-      - "**/*.py"
-      - "**/*.java"
-      - "**/*.go"
-      - "**/*.md"
+chat:
+  # art: true  # 기본값: false | 채팅 아트 생성
+  # auto_reply: false  # 기본값: true | 자동 응답
+  instructions: "AI Platform Web UI 개발팀을 위한 어시스턴트입니다. Kubernetes, FastAPI, React, vLLM, Kubeflow, Monitoring 관련 질문에 전문적으로 답변하며, 프로젝트의 멀티서비스 아키텍처와 AI/ML 워크플로우를 고려한 실용적인 솔루션을 제공합니다."  # AI Platform 전용 채팅 지침
+  integrations:
+    jira:
+    #   usage: auto  # 기본값: auto | Jira 통합 (auto/enabled/disabled)
+    linear:
+    #   usage: auto  # 기본값: auto | Linear 통합 (auto/enabled/disabled)
 
-chatops:
-  chat:
-    instructions: "Please review this code for security, performance, and maintainability."
+knowledge_base:
+  # opt_out: false  # 기본값: false | 지식 베이스 비활성화
+  web_search:
+    # enabled: true  # 기본값: true | 웹 검색 통합
+  code_guidelines:
+    # enabled: true  # 기본값: true | 코딩 가이드라인 적용
+    filePatterns:  # 코딩 가이드라인 문서 패턴
+      - "docs/**/*.md"
+      - "**/README.md"
+      - ".cursorrules"
+      - "ai-platform-backend/**/docs/**/*.md"
+      - "vllm-benchmark/**/docs/**/*.md"
+  learnings:
+    # scope: auto  # 기본값: auto | 학습 범위 (local/global/auto)
+  issues:
+    # scope: auto  # 기본값: auto | 이슈 범위 (local/global/auto)
+  jira:
+    # usage: auto  # 기본값: auto | Jira 지식베이스 통합
+    project_keys: []  # 기본값: [] | Jira 프로젝트 키
+  linear:
+    # usage: auto  # 기본값: auto | Linear 지식베이스 통합
+    team_keys: []  # 기본값: [] | Linear 팀 키
+  pull_requests:
+    # scope: auto  # 기본값: auto | PR 범위 (local/global/auto)
+  # mcp:
+  #   usage: auto  # 기본값: auto | MCP 통합
+  #   disabled_servers: []  # 기본값: [] | 비활성화할 MCP 서버
+
+code_generation:
+  docstrings:
+    # language: ko-KR  # 기본값: 'ko-KR' | 독스트링 생성 언어
+    path_instructions:  # 경로별 독스트링 지침
+      - path: "ai-platform-backend/**/*.py"
+        instructions: "FastAPI 엔드포인트는 OpenAPI 스키마에 맞는 상세한 독스트링 작성. 쿠버네티스 리소스 조작 함수는 에러 케이스와 권한 요구사항 명시. Kubeflow 파이프라인 함수는 워크플로우 단계와 의존성 기술. Prometheus 메트릭 함수는 수집 주기와 라벨 정보 포함"
+      - path: "vllm-benchmark/**/*.py"
+        instructions: "벤치마크 함수는 입력 파라미터, 측정 메트릭, 반환값 형식을 명확히 기술. MongoDB 연동 함수는 쿼리 패턴과 인덱싱 정보 포함. GitHub API 연동 함수는 API 호출 과정과 에러 처리 상세 기술"
+      - path: "**/*.{ts,tsx}"
+        instructions: "React 컴포넌트는 props, 상태, 이벤트 핸들러에 대한 TSDoc 작성. 커스텀 훅은 사용법과 의존성 명시"
+  unit_tests:
+    path_instructions:  # 경로별 테스트 생성 지침
+      - path: "ai-platform-backend/**/*.py"
+        instructions: "FastAPI 엔드포인트는 pytest + httpx로 integration test 생성. 쿠버네티스 API 호출은 mock 사용하여 unit test 작성. Kubeflow 파이프라인은 mock 워크플로우로 테스트. Prometheus 메트릭은 test collector로 검증"
+      - path: "vllm-benchmark/**/*.py"
+        instructions: "벤치마크 함수는 샘플 데이터로 성능 측정 로직 검증. MongoDB 연동은 test container로 테스트. GitHub API 통합은 mock client로 검증"
+      - path: "**/*.{ts,tsx}"
+        instructions: "React 컴포넌트는 React Testing Library로 render/interaction 테스트 생성. 커스텀 훅은 @testing-library/react-hooks 사용"
