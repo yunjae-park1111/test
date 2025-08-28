@@ -62,8 +62,7 @@ reviews:
   auto_review:
     # enabled: true  # 기본값: true | 자동 리뷰 활성화
     # auto_incremental_review: true  # 기본값: true | 증분 리뷰
-    ignore_title_keywords:  # 기본값: [] | 리뷰 제외 키워드
-    #   - ""
+    ignore_title_keywords: []  # 기본값: [] | 리뷰 제외 키워드
     labels: []  # 기본값: [] | 리뷰 대상 라벨 필터
     drafts: false  # 기본값: false | 드래프트 PR 리뷰
     base_branches:  # 리뷰 대상 브랜치
@@ -84,14 +83,14 @@ chat:
   # auto_reply: false  # 기본값: true | 자동 응답
   instructions: "AI Platform Web UI 개발팀을 위한 어시스턴트입니다. Kubernetes, FastAPI, React, vLLM, Kubeflow, Monitoring 관련 질문에 전문적으로 답변하며, 프로젝트의 멀티서비스 아키텍처와 AI/ML 워크플로우를 고려한 실용적인 솔루션을 제공합니다."  # AI Platform 전용 채팅 지침
   integrations:
-    jira:
+    jira: {}
     #   usage: auto  # 기본값: auto | Jira 통합 (auto/enabled/disabled)
-    linear:
+    linear: {}
     #   usage: auto  # 기본값: auto | Linear 통합 (auto/enabled/disabled)
 
 knowledge_base:
   # opt_out: false  # 기본값: false | 지식 베이스 비활성화
-  web_search:
+  web_search: {}
     # enabled: true  # 기본값: true | 웹 검색 통합
   code_guidelines:
     # enabled: true  # 기본값: true | 코딩 가이드라인 적용
@@ -101,9 +100,9 @@ knowledge_base:
       - ".cursorrules"
       - "ai-platform-backend/**/docs/**/*.md"
       - "vllm-benchmark/**/docs/**/*.md"
-  learnings:
+  learnings: {}
     # scope: auto  # 기본값: auto | 학습 범위 (local/global/auto)
-  issues:
+  issues: {}
     # scope: auto  # 기본값: auto | 이슈 범위 (local/global/auto)
   jira:
     # usage: auto  # 기본값: auto | Jira 지식베이스 통합
@@ -111,7 +110,7 @@ knowledge_base:
   linear:
     # usage: auto  # 기본값: auto | Linear 지식베이스 통합
     team_keys: []  # 기본값: [] | Linear 팀 키
-  pull_requests:
+  pull_requests: {}
     # scope: auto  # 기본값: auto | PR 범위 (local/global/auto)
   # mcp:
   #   usage: auto  # 기본값: auto | MCP 통합
