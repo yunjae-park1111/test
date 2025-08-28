@@ -38,6 +38,11 @@ reviews:
     - "**/*.{js,ts,jsx,tsx}"
     - "**/*.{py,prisma,sql}"
     - "**/*.{yml,yaml,json,md}"
+    - "**/Dockerfile*"  # Dockerfile, Dockerfile.dev 등
+    - "**/*.Dockerfile"  # tmp.Dockerfile, prod.Dockerfile 등
+    - "**/docker-compose*.{yml,yaml}"  # docker-compose 파일들
+    - "**/.dockerignore"  # Docker ignore 파일
+    - "**/.gitignore"  # Git ignore 파일
     - "!node_modules/**"
     - "!dist/**"
     - "!build/**"
@@ -54,8 +59,14 @@ reviews:
       instructions: "React 모범 사례, TypeScript 타입 안전성, 9ui 컴포넌트 패턴, TailwindCSS 일관성, 상태 관리 최적화를 중점적으로 검토"
     - path: "**/*.{yaml,yml}"
       instructions: "Kubernetes 매니페스트, Helm 차트, CI/CD 파이프라인의 보안성과 모범 사례를 중점적으로 검토"
-    - path: "**/Dockerfile"
+    - path: "**/Dockerfile*"
       instructions: "Docker 보안 모범 사례, 멀티스테이지 빌드, 이미지 크기 최적화, 취약점 최소화를 중점적으로 검토"
+    - path: "**/*.Dockerfile"
+      instructions: "Docker 보안 모범 사례, 멀티스테이지 빌드, 이미지 크기 최적화, 취약점 최소화를 중점적으로 검토"
+    - path: "**/docker-compose*.{yml,yaml}"
+      instructions: "Docker Compose 보안 설정, 네트워크 분리, 볼륨 마운트 보안, 환경 변수 관리, 리소스 제한, 서비스 간 의존성 최적화를 중점적으로 검토"
+    - path: "**/.gitignore"
+      instructions: "보안 관련 파일 누락 확인 (환경 변수, 키 파일, 인증서), 빌드 결과물 제외, IDE 설정 파일, 로그 파일, 캐시 디렉토리 적절한 제외 여부를 중점적으로 검토"
   # abort_on_close: true  # 기본값: true | PR 닫힘시 리뷰 중단
   # disable_cache: false  # 기본값: false | 캐시 비활성화
   
