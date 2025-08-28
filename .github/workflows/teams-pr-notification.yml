@@ -27,13 +27,12 @@ jobs:
           TARGET_BRANCH="${{ github.event.pull_request.base.ref }}"
           REPOSITORY="${{ github.repository }}"
           
-          # 전체 리뷰어 목록에서 coderabbit 제외
-          ALL_REVIEWERS="${{ join(github.event.pull_request.requested_reviewers.*.login, ', ') }}"
-          REVIEWERS=$(echo "$ALL_REVIEWERS" | sed 's/coderabbit\[bot\]//g' | sed 's/coderabbit//g' | sed 's/, ,/,/g' | sed 's/^, //g' | sed 's/, $//g' | sed 's/,,/,/g')
+          # 리뷰어 정보 (coderabbit 포함)
+          REVIEWERS="${{ join(github.event.pull_request.requested_reviewers.*.login, ', ') }}"
           
-          # coderabbit만 할당된 경우나 리뷰어가 없는 경우 알림 중단
-          if [ -z "$REVIEWERS" ] || [ "$REVIEWERS" = " " ]; then
-            echo "실제 리뷰어가 없습니다 (coderabbit만 할당됨). 알림을 보내지 않습니다."
+          # 리뷰어가 없는 경우만 알림 중단
+          if [ -z "$REVIEWERS" ]; then
+            echo "리뷰어가 할당되지 않았습니다. 알림을 보내지 않습니다."
             exit 0
           fi
           
