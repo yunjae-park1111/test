@@ -1,0 +1,86 @@
+name: PR Notify to Teams
+
+on:
+  pull_request:
+    types: [review_requested]
+    branches:
+      - main
+      - dev
+      - 'release-v*'
+      - 'epic/#*'
+
+concurrency:
+  group: pr-review-notification-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Adaptive Card to Teams
+        run: |
+          # PR 기본 정보
+          PR_TITLE="${{ github.event.pull_request.title }}"
+          PR_URL="${{ github.event.pull_request.html_url }}"
+          PR_AUTHOR="${{ github.event.pull_request.user.login }}"
+          PR_BRANCH="${{ github.event.pull_request.head.ref }}"
+          TARGET_BRANCH="${{ github.event.pull_request.base.ref }}"
+          REPOSITORY="${{ github.repository }}"
+          
+          # 전체 리뷰어 목록에서 coderabbit 제외
+          ALL_REVIEWERS="${{ join(github.event.pull_request.requested_reviewers.*.login, ', ') }}"
+          REVIEWERS=$(echo "$ALL_REVIEWERS" | sed 's/coderabbit\[bot\]//g' | sed 's/coderabbit//g' | sed 's/, ,/,/g' | sed 's/^, //g' | sed 's/, $//g' | sed 's/,,/,/g')
+          
+          # coderabbit만 할당된 경우나 리뷰어가 없는 경우 알림 중단
+          if [ -z "$REVIEWERS" ] || [ "$REVIEWERS" = " " ]; then
+            echo "실제 리뷰어가 없습니다 (coderabbit만 할당됨). 알림을 보내지 않습니다."
+            exit 0
+          fi
+          
+          # 10초 대기 (여러 리뷰어 연속 할당 시 알림 중복 방지)
+          echo "실제 리뷰어 할당 확인: $REVIEWERS"
+          echo "10초 대기 중..."
+          sleep 10
+          
+          # JSON 특수문자 이스케이프 (제목에 따옴표 등이 있을 경우 대비)
+          PR_TITLE_ESCAPED=$(echo "$PR_TITLE" | sed 's/"/\\"/g')
+          REVIEWERS_ESCAPED=$(echo "$REVIEWERS" | sed 's/"/\\"/g')
+          
+          # Adaptive Card JSON 생성 및 전송
+          curl -H 'Content-Type: application/json' \
+               -d "{
+                 \"\$schema\": \"http://adaptivecards.io/schemas/adaptive-card.json\",
+                 \"type\": \"AdaptiveCard\",
+                 \"version\": \"1.5\",
+                 \"msteams\": {\"width\": \"Full\"},
+                 \"body\": [
+                   {
+                     \"type\": \"TextBlock\",
+                     \"text\": \"[$REPOSITORY] PR 리뷰 요청\",
+                     \"size\": \"Large\",
+                     \"weight\": \"Bolder\",
+                     \"wrap\": true
+                   },
+                   {
+                     \"type\": \"FactSet\",
+                     \"facts\": [
+                       {\"title\": \"PR 제목\", \"value\": \"$PR_TITLE_ESCAPED\"},
+                       {\"title\": \"작성자\", \"value\": \"$PR_AUTHOR\"},
+                       {\"title\": \"브랜치\", \"value\": \"$PR_BRANCH → $TARGET_BRANCH\"},
+                       {\"title\": \"리포지토리\", \"value\": \"$REPOSITORY\"},
+                       {\"title\": \"리뷰어\", \"value\": \"$REVIEWERS_ESCAPED\"}
+                     ]
+                   },
+                   {
+                     \"type\": \"ActionSet\",
+                     \"actions\": [
+                       {
+                         \"type\": \"Action.OpenUrl\",
+                         \"title\": \"PR 보기\",
+                         \"url\": \"$PR_URL\"
+                       }
+                     ]
+                   }
+                 ]
+               }" \
+               "${{ secrets.TEAMS_WEBHOOK_URL }}"
