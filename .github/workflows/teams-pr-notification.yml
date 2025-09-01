@@ -12,9 +12,26 @@ on:
 jobs:
   notify:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    concurrency:
+      group: teams-pr-${{ github.event.pull_request.number }}-${{ github.workflow }}
+      cancel-in-progress: true
+    timeout-minutes: 3
     steps:
       - name: Send Adaptive Card to Teams
+        env:
+          TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
         run: |
+          set -euo pipefail
+
+          # 필수 비밀값 확인
+          if [ -z "${TEAMS_WEBHOOK_URL:-}" ]; then
+            echo "TEAMS_WEBHOOK_URL 이(가) 설정되지 않아 알림을 건너뜁니다."
+            exit 0
+          fi
+
           # PR 기본 정보
           PR_TITLE="${{ github.event.pull_request.title }}"
           PR_URL="${{ github.event.pull_request.html_url }}"
@@ -22,56 +39,50 @@ jobs:
           PR_BRANCH="${{ github.event.pull_request.head.ref }}"
           TARGET_BRANCH="${{ github.event.pull_request.base.ref }}"
           REPOSITORY="${{ github.repository }}"
-          
-          # 전체 리뷰어 목록에서 coderabbit 제외
-          ALL_REVIEWERS="${{ join(github.event.pull_request.requested_reviewers.*.login, ', ') }}"
-          REVIEWERS=$(echo "$ALL_REVIEWERS" | sed 's/coderabbitai//g' | sed 's/coderabbit\[bot\]//g' | sed 's/coderabbit//g' | sed 's/, ,/,/g' | sed 's/^, //g' | sed 's/, $//g' | sed 's/,,/,/g')
-          
+
+          # 전체 리뷰어 목록에서 coderabbit 계정 제거 (JSON 파싱)
+          ALL_REVIEWERS=$(jq -r '[.pull_request.requested_reviewers[]?.login
+            | select(. != "coderabbit" and . != "coderabbitai" and . != "coderabbit[bot]")] | join(", ")' "$GITHUB_EVENT_PATH")
+          TEAM_REVIEWERS=$(jq -r '[.pull_request.requested_teams[]?.name] | join(", ")' "$GITHUB_EVENT_PATH")
+          REVIEWERS=$(printf "%s%s%s" "$ALL_REVIEWERS" "${ALL_REVIEWERS:+, }" "$TEAM_REVIEWERS" | sed 's/^, //; s/, $//')
+
           # coderabbit만 할당된 경우나 리뷰어가 없는 경우 알림 중단
-          if [ -z "$REVIEWERS" ] || [ "$REVIEWERS" = " " ]; then
+          if [ -z "$(echo "$REVIEWERS" | tr -d '[:space:],')" ]; then
             echo "실제 리뷰어가 없습니다 (coderabbit만 할당됨 또는 리뷰어 없음). 알림을 보내지 않습니다."
             exit 0
           fi
-          
-          # JSON 특수문자 이스케이프 (제목에 따옴표 등이 있을 경우 대비)
-          PR_TITLE_ESCAPED=$(echo "$PR_TITLE" | sed 's/"/\\"/g')
-          REVIEWERS_ESCAPED=$(echo "$REVIEWERS" | sed 's/"/\\"/g')
-          
-          # Adaptive Card JSON 생성 및 전송
-          curl -H 'Content-Type: application/json' \
-               -d "{
-                 \"\$schema\": \"http://adaptivecards.io/schemas/adaptive-card.json\",
-                 \"type\": \"AdaptiveCard\",
-                 \"version\": \"1.5\",
-                 \"msteams\": {\"width\": \"Full\"},
-                 \"body\": [
-                   {
-                     \"type\": \"TextBlock\",
-                     \"text\": \"[$REPOSITORY] PR 리뷰 요청\",
-                     \"size\": \"Large\",
-                     \"weight\": \"Bolder\",
-                     \"wrap\": true
-                   },
-                   {
-                     \"type\": \"FactSet\",
-                     \"facts\": [
-                       {\"title\": \"PR 제목\", \"value\": \"$PR_TITLE_ESCAPED\"},
-                       {\"title\": \"작성자\", \"value\": \"$PR_AUTHOR\"},
-                       {\"title\": \"브랜치\", \"value\": \"$PR_BRANCH → $TARGET_BRANCH\"},
-                       {\"title\": \"리포지토리\", \"value\": \"$REPOSITORY\"},
-                       {\"title\": \"리뷰어\", \"value\": \"$REVIEWERS_ESCAPED\"}
-                     ]
-                   },
-                   {
-                     \"type\": \"ActionSet\",
-                     \"actions\": [
-                       {
-                         \"type\": \"Action.OpenUrl\",
-                         \"title\": \"PR 보기\",
-                         \"url\": \"$PR_URL\"
-                       }
-                     ]
-                   }
-                 ]
-               }" \
-               "${{ secrets.TEAMS_WEBHOOK_URL }}"
+
+          # Adaptive Card JSON 생성 (jq 사용)
+          PAYLOAD=$(jq -n \
+            --arg repo "$REPOSITORY" \
+            --arg title "$PR_TITLE" \
+            --arg author "$PR_AUTHOR" \
+            --arg branches "$PR_BRANCH → $TARGET_BRANCH" \
+            --arg repository "$REPOSITORY" \
+            --arg reviewers "$REVIEWERS" \
+            --arg url "$PR_URL" \
+            '{
+              "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+              "type": "AdaptiveCard",
+              "version": "1.5",
+              "msteams": {"width": "Full"},
+              "body": [
+                {"type": "TextBlock", "text": ("[" + $repo + "] PR 리뷰 요청"), "size": "Large", "weight": "Bolder", "wrap": true},
+                {"type": "FactSet", "facts": [
+                  {"title": "PR 제목", "value": $title},
+                  {"title": "작성자", "value": $author},
+                  {"title": "브랜치", "value": $branches},
+                  {"title": "리포지토리", "value": $repository},
+                  {"title": "리뷰어", "value": $reviewers}
+                ]},
+                {"type": "ActionSet", "actions": [
+                  {"type": "Action.OpenUrl", "title": "PR 보기", "url": $url}
+                ]}
+              ]
+            }')
+
+          # 전송 및 에러 처리
+          curl -sSf --retry 3 --retry-all-errors --connect-timeout 5 --max-time 10 \
+               -X POST -H 'Content-Type: application/json' \
+               -d "$PAYLOAD" \
+               "$TEAMS_WEBHOOK_URL"
