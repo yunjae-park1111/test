@@ -1,0 +1,42 @@
+name: Self-Hosted Runner Test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  test-self-hosted:
+    runs-on: ["self-hosted", "yunjae-park1111", "test"]
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Test runner environment
+      run: |
+        pwd
+        whoami
+        uname -a
+        df -h
+        free -h
+        
+    - name: Test Python availability
+      run: |
+        python3 --version
+        pip3 --version
+        
+    - name: Test basic commands
+      run: |
+        ls -la
+        git --version
+        which python3
+        which pip3
+        
+    - name: Test workspace access
+      run: |
+        ls -la $GITHUB_WORKSPACE
+        cat /proc/cpuinfo | grep "model name" | head -1
+        cat /proc/meminfo | grep "MemTotal"
