@@ -1,0 +1,26 @@
+name: Docker Build Test
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+jobs:
+  docker-build-test:
+    runs-on: ["self-hosted", "thaki", "ai-platform-webui"]
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Test Docker build
+        run: |
+          echo "Testing Docker build..."
+          docker build -t test-build:latest .
+          echo "Docker build test completed successfully!"
+      
+      - name: Clean up test image
+        run: |
+          docker rmi test-build:latest || true
