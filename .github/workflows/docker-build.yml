@@ -15,10 +15,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
       
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
       - name: Test Docker build
         run: |
-          echo "Testing Docker build..."
-          docker build -t test-build:latest .
+          echo "Testing Docker build with Buildx..."
+          docker buildx build -t test-build:latest .
           echo "Docker build test completed successfully!"
       
       - name: Clean up test image
