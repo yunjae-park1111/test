@@ -11,7 +11,7 @@ on:
 
 jobs:
   notify:
-    runs-on: ubuntu-latest
+    runs-on: ["self-hosted", "thaki", "ai-platform-webui"]
     permissions:
       contents: read
       pull-requests: read
@@ -40,10 +40,79 @@ jobs:
           TARGET_BRANCH="${{ github.event.pull_request.base.ref }}"
           REPOSITORY="${{ github.repository }}"
 
-          # 전체 리뷰어 목록에서 coderabbit 계정 제거 (JSON 파싱)
-          ALL_REVIEWERS=$(jq -r '[.pull_request.requested_reviewers[]?.login
-            | select(. != "coderabbit" and . != "coderabbitai" and . != "coderabbit[bot]")] | join(", ")' "$GITHUB_EVENT_PATH")
-          TEAM_REVIEWERS=$(jq -r '[.pull_request.requested_teams[]?.name] | join(", ")' "$GITHUB_EVENT_PATH")
+          # GitHub Variables에서 사용자 이메일 매핑 가져오기
+          USER_EMAIL_MAP="${{ vars.USER_EMAIL_MAP }}"
+          if [ -z "$USER_EMAIL_MAP" ]; then
+            echo "❌ USER_EMAIL_MAP Variable이 설정되지 않았습니다."
+            echo "🔧 Repository Settings > Secrets and variables > Actions > Variables에서 설정해주세요."
+            echo "📋 예시 형식: {\"pyj\":\"yunjae.park@thakicloud.co.kr\",\"username\":\"email@thakicloud.co.kr\"}"
+            exit 1
+          fi
+
+          # 리뷰어 목록에서 coderabbit 계정 제거
+          REVIEWER_LOGINS=$(jq -r '[.pull_request.requested_reviewers[]?.login
+            | select(. != "coderabbit" and . != "coderabbitai" and . != "coderabbit[bot]")][]' "$GITHUB_EVENT_PATH")
+
+          # 각 리뷰어의 이메일 조회 및 멘션 정보 생성
+          ALL_REVIEWERS=""
+          MENTION_ENTITIES=""
+          MENTION_TEXT=""
+          FAILED_USERS=""
+
+          add_mention() {
+            local email=$1
+            local username=$(echo "$email" | cut -d'@' -f1)
+            ALL_REVIEWERS="${ALL_REVIEWERS}${ALL_REVIEWERS:+, }$email"
+            MENTION_ENTITIES="${MENTION_ENTITIES}${MENTION_ENTITIES:+,}{\"type\":\"mention\",\"text\":\"<at>$username</at>\",\"mentioned\":{\"id\":\"$email\",\"name\":\"$username\"}}"
+            MENTION_TEXT="$MENTION_TEXT<at>$username</at> "
+          }
+
+          for login in $REVIEWER_LOGINS; do
+            email=$(echo "$USER_EMAIL_MAP" | jq -r --arg login "$login" '.[$login] // empty')
+            if [ -n "$email" ] && [ "$email" != "null" ]; then
+              add_mention "$email"
+            else
+              FAILED_USERS="${FAILED_USERS}${FAILED_USERS:+, }$login"
+              ALL_REVIEWERS="${ALL_REVIEWERS}${ALL_REVIEWERS:+, }$login"
+            fi
+          done
+
+
+          # 팀 리뷰어 처리
+          TEAM_REVIEWERS_JSON=$(jq -r '[.pull_request.requested_teams[]?.name]' "$GITHUB_EVENT_PATH")
+          TEAM_REVIEWERS_LIST=$(echo "$TEAM_REVIEWERS_JSON" | jq -r '.[]')
+          TEAM_REVIEWERS=""
+
+          # ai-platform-team이 있으면 팀 멤버 전체 멘션
+          for team in $TEAM_REVIEWERS_LIST; do
+            if [ "$team" = "ai-platform-team" ]; then
+              echo "🔍 ai-platform-team 멤버들을 조회합니다..."
+              TEAM_MEMBERS=$(curl -sSf -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+                -H "Accept: application/vnd.github.v3+json" \
+                "https://api.github.com/orgs/ThakiCloud/teams/ai-platform-team/members" | jq -r '.[].login')
+
+              for member in $TEAM_MEMBERS; do
+                email=$(echo "$USER_EMAIL_MAP" | jq -r --arg login "$member" '.[$login] // empty')
+                if [ -n "$email" ] && [ "$email" != "null" ]; then
+                  add_mention "$email"
+                else
+                  FAILED_USERS="${FAILED_USERS}${FAILED_USERS:+, }$member"
+                  ALL_REVIEWERS="${ALL_REVIEWERS}${ALL_REVIEWERS:+, }$member"
+                fi
+              done
+            else
+              TEAM_REVIEWERS="${TEAM_REVIEWERS}${TEAM_REVIEWERS:+, }$team"
+            fi
+          done
+
+          # 팀 멤버 포함하여 매핑되지 않은 사용자가 있으면 실패 처리
+          if [ -n "$FAILED_USERS" ]; then
+            echo "❌ 다음 사용자들의 이메일 매핑이 없습니다: $FAILED_USERS"
+            echo "USER_EMAIL_MAP Secret에 추가해주세요: {\"username\":\"email@thakicloud.co.kr\"}"
+            exit 1
+          fi
+
+          MENTION_TEXT=$(echo "$MENTION_TEXT" | sed 's/ *$//')
           REVIEWERS=$(printf "%s%s%s" "$ALL_REVIEWERS" "${ALL_REVIEWERS:+, }" "$TEAM_REVIEWERS" | sed 's/^, //; s/, $//')
 
           # coderabbit만 할당된 경우나 리뷰어가 없는 경우 알림 중단
@@ -52,7 +121,10 @@ jobs:
             exit 0
           fi
 
-          # Adaptive Card JSON 생성 (jq 사용)
+          # Adaptive Card JSON 생성 (안전한 jq 사용)
+          ENTITIES_JSON="[$MENTION_ENTITIES]"
+          TITLE_TEXT="${MENTION_TEXT:+$MENTION_TEXT }[$REPOSITORY] PR 리뷰 요청"
+
           PAYLOAD=$(jq -n \
             --arg repo "$REPOSITORY" \
             --arg title "$PR_TITLE" \
@@ -61,13 +133,18 @@ jobs:
             --arg repository "$REPOSITORY" \
             --arg reviewers "$REVIEWERS" \
             --arg url "$PR_URL" \
+            --arg title_text "$TITLE_TEXT" \
+            --argjson mention_entities "$ENTITIES_JSON" \
             '{
               "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
               "type": "AdaptiveCard",
               "version": "1.5",
-              "msteams": {"width": "Full"},
+              "msteams": {
+                "width": "Full",
+                "entities": $mention_entities
+              },
               "body": [
-                {"type": "TextBlock", "text": ("[" + $repo + "] PR 리뷰 요청"), "size": "Large", "weight": "Bolder", "wrap": true},
+                {"type": "TextBlock", "text": $title_text, "size": "Large", "weight": "Bolder", "wrap": true},
                 {"type": "FactSet", "facts": [
                   {"title": "PR 제목", "value": $title},
                   {"title": "작성자", "value": $author},
