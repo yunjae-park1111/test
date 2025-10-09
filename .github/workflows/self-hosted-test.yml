@@ -9,7 +9,7 @@ on:
 
 jobs:
   test-self-hosted:
-    runs-on: ["self-hosted", "yunjae-park1111", "test"]
+    runs-on: ${{ fromJSON(vars.RUNNER_TYPE) }}
     
     steps:
     - name: Checkout repository
