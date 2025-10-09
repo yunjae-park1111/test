@@ -9,7 +9,7 @@ on:
 
 jobs:
   docker-build-test:
-    runs-on: ["self-hosted", "thaki", "ai-platform-webui"]
+    runs-on: ${{ fromJSON(vars.RUNNER_TYPE) }}
     
     steps:
       - name: Checkout repository
